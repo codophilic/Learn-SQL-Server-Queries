@@ -168,7 +168,11 @@ empId       name            dept       Salary               gender
           6 XYZ             NULL                  4000.9889           3
 ```
 
-- Whole Query
+
+### Cascading Referential Integrity OR Referential Integrity
+
+- Referential integrity is usually enforced by creating a foreign key in one table that matches the primary key of another table. **If referential integrity is not enforced, then you may encounter data redundancy and inconsistencies.**
+- Consider below SQL Query
 
 ```
 
@@ -200,19 +204,33 @@ INSERT INTO EMPLOYEE(empId,name,dept,Salary,gender) VALUES (1, 'Clark', 'Sales',
 , (3, 'Ava', 'Sales',3000,2),(4, 'ABC', 'Sales',4000,3),(5, 'BCD', 'Sales',5000,3),(6, 'XYZ', null,4000.988888,3);
 
 
-select * from EMPLOYEE;
 
 alter table gender add constraint default_value_for_gender default "Not Assigned" for name;
 
-insert into gender(id) values (4);
+select * from EMPLOYEE;
 select * from gender;
-
-alter table employee add phone varchar(20) not null default "Not Provided";
-select * from employee;
-
-alter table employee drop constraint DF__EMPLOYEE__phone__3B75D760;
-alter table employee drop column phone ;
-select * from employee
 ```
+
+- Output
+
+```
+Output:
+
+empId       name            dept       Salary               gender     
+----------- --------------- ---------- -------------------- -----------
+          1 Clark           Sales                 1000.0000           1
+          2 Dave            Accounting            2000.0000           1
+          3 Ava             Sales                 3000.0000           2
+          4 ABC             Sales                 4000.0000           3
+          5 BCD             Sales                 5000.0000           3
+          6 XYZ             NULL                  4000.9889           3
+id          name           
+----------- ---------------
+          1 Male           
+          2 Female         
+          3 Others   
+```
+
+- Now suppose you don't create foreign key 
 
   
