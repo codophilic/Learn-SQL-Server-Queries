@@ -11,7 +11,7 @@ CREATE TABLE EMPLOYEE (
   empId int primary key,
   name varchar(15) not null,
   dept varchar(10),
-  Salary numeric(18,4) not null
+  Salary numeric(18,4) not null -- 18 digits before decimal and 4 digits after decimal
 );
 
 
@@ -39,15 +39,19 @@ empId       name            dept       Salary
 
 ### Adding Foreign Key
 
+- A foreign key is a key whose values are derived from the Primary key of another table.
+- The table from which the values are derived is known as **Master or Referenced Table** and the Table in which values are inserted accordingly is known as **Child or Referencing Table**, In other words, we can say that the table containing the foreign key is called the **child table**, and the table containing the Primary key/candidate key is called the **referenced or parent table**.
+
 - SQL Queries
 
 ```
-
+-- Child Table
 create table gender(
   id int primary key,
   name varchar(7) not null
 );
 
+-- Employee Master Table
 alter table EMPLOYEE add constraint gender_as_FK foreign key (gender) references gender(id); -- Foreign Key
 
 insert into gender(id,name) VALUES (1,"Male"),(2,"Female"),(3,"Others");
@@ -175,8 +179,6 @@ empId       name            dept       Salary               gender
 - Consider below SQL Query
 
 ```
-
-
 -- create
 CREATE TABLE EMPLOYEE (
   empId int primary key,
@@ -231,6 +233,1026 @@ id          name
           3 Others   
 ```
 
-- Now suppose you don't create foreign key 
+- Now suppose you don't create foreign key and you delete any `id` from `gender` table. The corresponding ID's are still present in  `employee` table. This leads to data inconsistencies. You need to manually delete those data from `employee` table. 
+- Due to referential integrity, if you try to delete any row from the child table (`gender`) you will get `The DELETE statement conflicted with the REFERENCE constraint "gender_as_FK". The conflict occurred in database "db_42whkr55c_42wjgrfaq", table "dbo.EMPLOYEE", column 'gender'. The statement has been terminated.` such type of error.
+- But if you wanna delete the data you need to set some default values or tell SQL Server to these those records from other table as well (`CASCADE`)
 
-  
+#### Setting Default Value
+
+- Consider below SQL Queries
+
+```
+-- create
+CREATE TABLE EMPLOYEE (
+  empId int primary key,
+  name varchar(15) not null,
+  dept varchar(10),
+  Salary numeric(18,4) not null,
+  gender int
+);
+
+
+create table gender(
+  id int primary key,
+  name varchar(15)
+);
+
+-- Insert
+INSERT INTO EMPLOYEE(empId,name,dept,Salary,gender) VALUES (1, 'Clark', 'Sales',1000,1),(2, 'Dave', 'Accounting',2000,1)
+, (3, 'Ava', 'Sales',3000,2),(4, 'ABC', 'Sales',4000,3),(5, 'BCD', 'Sales',5000,3),(6, 'XYZ', null,4000.988888,3);
+insert into gender(id,name) VALUES (1,"Male"),(2,"Female"),(3,"Others");
+
+-- Adding foreign key
+ALTER TABLE EMPLOYEE
+ADD CONSTRAINT gender_as_FK FOREIGN KEY (gender) -- gender column of Employee table
+REFERENCES gender(id) -- gender(id) , id column if gender table
+ON DELETE SET default;
+
+-- Adding constraint on gender table
+alter table gender add constraint default_value_for_gender default "Not Assigned" for name;
+
+-- Adding constraint on employee table's gender column setting some default value for gender column
+alter table employee add CONSTRAINT default_gender_id default 3 for gender;
+
+-- Deleting id=1 from gender table
+delete from gender where id=1;
+
+select * from gender;
+select * from EMPLOYEE;
+```
+
+- Here whatever the default value assigned for column `gender` (which is 3 `alter table employee add CONSTRAINT default_gender_id default 3 for gender;`) gets assigned if the Foreign key from the `gender` table is deleted.
+- Output
+
+```
+Output:
+
+id          name           
+----------- ---------------
+          2 Female         
+          3 Others         
+empId       name            dept       Salary               gender     
+----------- --------------- ---------- -------------------- -----------
+          1 Clark           Sales                 1000.0000           3
+          2 Dave            Accounting            2000.0000           3
+          3 Ava             Sales                 3000.0000           2
+          4 ABC             Sales                 4000.0000           3
+          5 BCD             Sales                 5000.0000           3
+          6 XYZ             NULL                  4000.9889           3
+```
+
+### Setting Default value as `NULL`
+
+- Similarly like above where we assigned 3 as default value, SQL server will assigned directly `NULL` value. You don't need to create default value constraint on `employee` table's `gender` column.
+
+```
+
+
+-- create
+CREATE TABLE EMPLOYEE (
+  empId int primary key,
+  name varchar(15) not null,
+  dept varchar(10),
+  Salary numeric(18,4) not null,
+  gender int
+);
+
+
+create table gender(
+  id int primary key,
+  name varchar(15)
+);
+
+-- Insert
+INSERT INTO EMPLOYEE(empId,name,dept,Salary,gender) VALUES (1, 'Clark', 'Sales',1000,1),(2, 'Dave', 'Accounting',2000,1)
+, (3, 'Ava', 'Sales',3000,2),(4, 'ABC', 'Sales',4000,3),(5, 'BCD', 'Sales',5000,3),(6, 'XYZ', null,4000.988888,3);
+insert into gender(id,name) VALUES (1,"Male"),(2,"Female"),(3,"Others");
+
+-- Adding foreign key
+ALTER TABLE EMPLOYEE
+ADD CONSTRAINT gender_as_FK FOREIGN KEY (gender) -- gender column of Employee table
+REFERENCES gender(id) -- gender(id) , id column if gender table
+ON DELETE SET NULL;
+
+-- Adding constraint on gender table
+alter table gender add constraint default_value_for_gender default "Not Assigned" for name;
+
+
+-- Deleting id=1 from gender table
+delete from gender where id=1;
+
+select * from gender;
+select * from EMPLOYEE;
+```
+
+- Output
+
+```
+Output:
+
+id          name           
+----------- ---------------
+          2 Female         
+          3 Others         
+empId       name            dept       Salary               gender     
+----------- --------------- ---------- -------------------- -----------
+          1 Clark           Sales                 1000.0000        NULL
+          2 Dave            Accounting            2000.0000        NULL
+          3 Ava             Sales                 3000.0000           2
+          4 ABC             Sales                 4000.0000           3
+          5 BCD             Sales                 5000.0000           3
+          6 XYZ             NULL                  4000.9889           3
+```
+
+### Delete Cascade
+
+- Lets say when you wanted to remove data from `gender` table but also you want all the related id which corresponds to the data which needs to be deleted, must also be deleted.
+
+```
+
+
+-- create
+CREATE TABLE EMPLOYEE (
+  empId int primary key,
+  name varchar(15) not null,
+  dept varchar(10),
+  Salary numeric(18,4) not null,
+  gender int
+);
+
+
+create table gender(
+  id int primary key,
+  name varchar(15)
+);
+
+-- Insert
+INSERT INTO EMPLOYEE(empId,name,dept,Salary,gender) VALUES (1, 'Clark', 'Sales',1000,1),(2, 'Dave', 'Accounting',2000,1)
+, (3, 'Ava', 'Sales',3000,2),(4, 'ABC', 'Sales',4000,3),(5, 'BCD', 'Sales',5000,3),(6, 'XYZ', null,4000.988888,3);
+insert into gender(id,name) VALUES (1,"Male"),(2,"Female"),(3,"Others");
+
+-- Adding foreign key
+ALTER TABLE EMPLOYEE
+ADD CONSTRAINT gender_as_FK FOREIGN KEY (gender) -- gender column of Employee table
+REFERENCES gender(id) -- gender(id) , id column if gender table
+ON DELETE CASCADE;
+
+-- Adding constraint on gender table
+alter table gender add constraint default_value_for_gender default "Not Assigned" for name;
+
+
+-- Deleting id=1 from gender table
+delete from gender where id=1;
+
+select * from gender;
+select * from EMPLOYEE;
+```
+
+- Output
+
+```
+Output:
+
+id          name           
+----------- ---------------
+          2 Female         
+          3 Others         
+empId       name            dept       Salary               gender     
+----------- --------------- ---------- -------------------- -----------
+          3 Ava             Sales                 3000.0000           2
+          4 ABC             Sales                 4000.0000           3
+          5 BCD             Sales                 5000.0000           3
+          6 XYZ             NULL                  4000.9889           3
+```
+
+### CHECK Constraint
+
+- A CHECK constraint in SQL Server is used to limit the values that can be entered into a column, ensuring they meet specified conditions. For example, we can use a CHECK constraint to enforce that values in an `age` column must be between `18` and `100`.
+
+```
+-- create
+CREATE TABLE EMPLOYEE (
+  empId int primary key,
+  name varchar(15) not null,
+  dept varchar(10),
+  Salary numeric(18,4) not null,
+  gender int
+);
+
+
+-- Add a new column 'age' with a CHECK constraint
+ALTER TABLE EMPLOYEE
+ADD age INT CHECK (age > 18 AND age < 100);
+
+-- Insert sample data to test the constraint
+INSERT INTO EMPLOYEE(empId,name,dept,Salary,gender,age) VALUES (1, 'Clark', 'Sales',1000,1,20);
+
+INSERT INTO EMPLOYEE(empId, name, dept, Salary, gender, age)
+VALUES 
+(2, 'John', 'Marketing', 2500, 1, 25);
+
+-- Verify the table structure and data
+SELECT * FROM EMPLOYEE;
+
+```
+
+- Output
+
+```
+Output:
+
+empId       name            dept       Salary               gender      age        
+----------- --------------- ---------- -------------------- ----------- -----------
+          1 Clark           Sales                 1000.0000           1          20
+          2 John            Marketing             2500.0000           1          25
+```
+
+- If you try to add value which are beyond the age. You will get error
+
+```
+Msg 547, Level 16, State 1, Server 899a7718fee7, Line 21
+The INSERT statement conflicted with the CHECK constraint "CK__EMPLOYEE__age__37A5467C". The conflict occurred in database "db_42whkr583_42wjjwthf", table "dbo.EMPLOYEE", column 'age'.
+The statement has been terminated.
+```
+
+>[!NOTE]
+> - Since we have allowed `NULL` values , the `NULL` values will be accepted during any insertion for `age` column.
+
+### Identity Column
+
+- An `IDENTITY` column in SQL Server is used to auto-generate unique numbers for each new row in a table. When you define a column as an IDENTITY, SQL Server automatically assigns an incrementing integer value to it, which can serve as a unique identifier for each row.
+
+```
+CREATE TABLE EMPLOYEE (
+  empId INT IDENTITY(1,1) PRIMARY KEY,
+  name VARCHAR(15) NOT NULL,
+  dept VARCHAR(10),
+  Salary NUMERIC(18,4) NOT NULL,
+  gender INT
+);
+
+
+insert into EMPLOYEE(name,dept,Salary,gender) Values ("ABC","IT",1000,1);
+
+select * from EMPLOYEE;
+```
+
+- Output
+
+
+```
+Output:
+
+empId       name            dept       Salary               gender     
+----------- --------------- ---------- -------------------- -----------
+          1 ABC             IT                    1000.0000           1
+```
+
+- When we insert data into `employee` table, we don't need to pass value for `empid` column, it gets automatically generated.
+- If you try to enter the value explicitly , you will get an error
+
+```
+insert into EMPLOYEE(empId,name,dept,Salary,gender) Values (2,"BCD","IT",1000,1);
+```
+
+- Output
+
+```
+Cannot insert explicit value for identity column in table 'EMPLOYEE' when IDENTITY_INSERT is set to OFF.
+```
+
+- If you wanna explicitly pass on the ID you can use `set IDENTITY_INSERT EMPLOYEE ON;`, **so whenever you are inserting value into the table it won't auto generate unique id, instead it gonna expect id from you**.
+
+```
+insert into EMPLOYEE(empId,name,dept,Salary,gender) Values (2,"BCD","IT",1000,1);
+```
+
+- Output
+
+```
+Output:
+
+empId       name            dept       Salary               gender     
+----------- --------------- ---------- -------------------- -----------
+          1 ABC             IT                    1000.0000           1
+          2 BCD             IT                    1000.0000           1
+```
+
+#### Differences Between an Identity Column and a Primary Key
+
+
+| **Feature**            | **Identity Column**                                         | **Primary Key Column**                                            |
+|------------------------|-------------------------------------------------------------|-------------------------------------------------------------------|
+| **Purpose**            | Automatically generates a unique numeric value for each row | Enforces uniqueness across rows in the table                      |
+| **Auto-increment**     | Yes, it automatically increments by a specified amount      | No, it doesn’t automatically generate values                      |
+| **Uniqueness**         | Values are unique if properly defined (no manual inserts)   | Must be unique; allows non-numeric values                         |
+| **Required Data Type** | Must be a numeric type (typically INT, BIGINT)              | Can be any data type                                              |
+| **Nullability**        | Cannot be null, as it provides unique values                | Cannot be null (required by primary key constraint)               |
+| **Usage Flexibility**  | Primarily used for numeric, auto-generated identifiers      | Can be a composite key, combining multiple columns for uniqueness |
+
+
+>[!NOTE]
+> -  A table in SQL Server can only have one `IDENTITY` column. This restriction exists because an IDENTITY column is designed to automatically generate unique values for each new row, which is typically intended to uniquely identify rows in a straightforward, sequential manner.
+
+### Unique Constraint
+
+- There could be scenario where you applied primary key on a table which has employee information like mobile number, aadhar number, email id etc.. So lets say if you applied primary key on mobile number, the uniqueness for email id and aadhar number is still not defined. In such case, you wanted to define uniqueness to email id and aadhar number you can create **unique constraint** on it.
+
+```
+alter table EMPLOYEE add email_id varchar(20);
+
+alter table EMPLOYEE add constraint unique_email_id unique (email_id);
+```
+
+#### Difference between unique constraint and primary key
+
+| **Feature**                | **UNIQUE Constraint**                                          | **PRIMARY KEY**                               |
+|----------------------------|----------------------------------------------------------------|-----------------------------------------------|
+| **Purpose**                | Ensures that values are unique across all rows in a column     | Uniquely identifies each row in a table       |
+| **Uniqueness Requirement** | Values must be unique, but allows NULL values                  | Must be unique and cannot contain NULL values |
+| **NULL Values**            | Allows one NULL per column (some databases may allow multiple) | Does not allow NULL values                    |
+| **Number per Table**       | A table can have multiple UNIQUE constraints                   | A table can have only one PRIMARY KEY         |
+
+
+### Manipulation in Select Queries 
+
+- Lets create a table and insert some values.
+
+```
+-- Create a temporary table
+CREATE TABLE EmployeeTemp (
+    empId INT,
+    name VARCHAR(15),
+    dept VARCHAR(10),
+    salary NUMERIC(18, 2),
+    age INT,
+    gender CHAR(1)
+);
+
+-- Insert sample data into the temporary table
+INSERT INTO #EmployeeTemp (empId, name, dept, salary, age, gender)
+VALUES 
+(1, 'Clark', 'Sales', 1000.50, 25, 'M'),
+(2, 'Alice', 'HR', 2000.75, 30, 'F'),
+(3, 'Bob', 'Marketing', 1500.25, 35, 'M'),
+(4, 'Eve', 'Finance', 2500.00, 28, 'F'),
+(5, 'John', 'Sales', 1800.50, 22, 'M');
+```
+
+- Display all the data
+
+```
+select * from EmployeeTemp;
+```
+
+- Output
+
+```
+Output:
+
+empId       name            dept       salary               age         gender
+----------- --------------- ---------- -------------------- ----------- ------
+          1 Clark           Sales                   1000.50          25 M     
+          2 Alice           HR                      2000.75          30 F     
+          3 Bob             Marketing               1500.25          35 M     
+          4 Eve             Finance                 2500.00          28 F     
+          5 John            Sales                   1800.50          22 M     
+```
+
+- Perform Logical Operation (`AND` or `OR`).
+
+```
+-- Select male employees in the Sales department
+SELECT * FROM EmployeeTemp WHERE gender = 'M' AND dept = 'Sales';
+
+-- Select employees in Sales or with a salary greater than 2000
+SELECT * FROM EmployeeTemp WHERE dept = 'Sales' OR salary > 2000;
+```
+
+- Output
+
+```
+Output:
+
+empId       name            dept       salary               age         gender
+----------- --------------- ---------- -------------------- ----------- ------
+          1 Clark           Sales                   1000.50          25 M     
+          5 John            Sales                   1800.50          22 M     
+empId       name            dept       salary               age         gender
+----------- --------------- ---------- -------------------- ----------- ------
+          1 Clark           Sales                   1000.50          25 M     
+          2 Alice           HR                      2000.75          30 F     
+          4 Eve             Finance                 2500.00          28 F     
+          5 John            Sales                   1800.50          22 M     
+```
+
+- Using `!=` and `<>` (Not Equal)
+
+```
+-- Select employees who are not in the Sales department
+SELECT * FROM EmployeeTemp WHERE dept != 'Sales';
+
+-- Alternative syntax
+SELECT * FROM EmployeeTemp WHERE dept <> 'Sales';
+```
+
+- Output
+
+```
+Output:
+
+empId       name            dept       salary               age         gender
+----------- --------------- ---------- -------------------- ----------- ------
+          2 Alice           HR                      2000.75          30 F     
+          3 Bob             Marketing               1500.25          35 M     
+          4 Eve             Finance                 2500.00          28 F     
+empId       name            dept       salary               age         gender
+----------- --------------- ---------- -------------------- ----------- ------
+          2 Alice           HR                      2000.75          30 F     
+          3 Bob             Marketing               1500.25          35 M     
+          4 Eve             Finance                 2500.00          28 F     
+```
+
+- Finding a range using `BETWEEN`
+
+```
+-- Select employees with age between 25 and 30
+SELECT * FROM EmployeeTemp WHERE age BETWEEN 25 AND 30;
+```
+
+- Output
+
+```
+Output:
+
+empId       name            dept       salary               age         gender
+----------- --------------- ---------- -------------------- ----------- ------
+          1 Clark           Sales                   1000.50          25 M     
+          2 Alice           HR                      2000.75          30 F     
+          4 Eve             Finance                 2500.00          28 F     
+```
+
+- Find those rows which existing in the group of values
+
+
+```
+-- Select employees in the Sales or HR departments
+SELECT * FROM EmployeeTemp WHERE dept IN ('Sales', 'HR');
+```
+
+- Output
+
+```
+Output:
+
+empId       name            dept       salary               age         gender
+----------- --------------- ---------- -------------------- ----------- ------
+          1 Clark           Sales                   1000.50          25 M     
+          2 Alice           HR                      2000.75          30 F     
+          5 John            Sales                   1800.50          22 M     
+```
+
+- Using greater than or less than or greater than/less than and equal to
+
+```
+-- Select employees with a salary greater than 1500
+SELECT * FROM EmployeeTemp WHERE salary > 1500;
+
+-- Select employees with an age less than 30 and equal to 30
+SELECT * FROM EmployeeTemp WHERE age <= 30;
+```
+
+- Output
+
+```
+Output:
+
+empId       name            dept       salary               age         gender
+----------- --------------- ---------- -------------------- ----------- ------
+          2 Alice           HR                      2000.75          30 F     
+          3 Bob             Marketing               1500.25          35 M     
+          4 Eve             Finance                 2500.00          28 F     
+          5 John            Sales                   1800.50          22 M     
+empId       name            dept       salary               age         gender
+----------- --------------- ---------- -------------------- ----------- ------
+          1 Clark           Sales                   1000.50          25 M     
+          2 Alice           HR                      2000.75          30 F     
+          4 Eve             Finance                 2500.00          28 F     
+          5 John            Sales                   1800.50          22 M     
+```
+
+- Pattern matching
+
+```
+-- Select employees whose name starts with 'C'
+SELECT * FROM EmployeeTemp WHERE name LIKE 'C%';
+
+-- Select employees whose department ends with 'e'
+SELECT * FROM EmployeeTemp WHERE dept LIKE '%e';
+
+-- Select employees whose department contains `a`
+SELECT * FROM EmployeeTemp WHERE dept LIKE '%a%';
+```
+
+- Output
+
+```
+Output:
+
+empId       name            dept       salary               age         gender
+----------- --------------- ---------- -------------------- ----------- ------
+          1 Clark           Sales                   1000.50          25 M     
+empId       name            dept       salary               age         gender
+----------- --------------- ---------- -------------------- ----------- ------
+          4 Eve             Finance                 2500.00          28 F     
+empId       name            dept       salary               age         gender
+----------- --------------- ---------- -------------------- ----------- ------
+          1 Clark           Sales                   1000.50          25 M     
+          3 Bob             Marketing               1500.25          35 M     
+          4 Eve             Finance                 2500.00          28 F     
+          5 John            Sales                   1800.50          22 M     
+```
+
+- The `%` character is use to find one or more character after or before the specified character.
+- The `_` character is use to find exactly one character after or before the specified character.
+
+```
+-- Select employees whose department has one word before `R`, so `HR`
+SELECT * FROM EmployeeTemp WHERE dept LIKE '_R';
+
+-- Select employees whose department has one word before `a` and any or zero characters after `a`'
+SELECT * FROM EmployeeTemp WHERE dept LIKE '_a%';
+```
+
+- Output
+
+```
+Output:
+
+empId       name            dept       salary               age         gender
+----------- --------------- ---------- -------------------- ----------- ------
+          2 Alice           HR                      2000.75          30 F     
+empId       name            dept       salary               age         gender
+----------- --------------- ---------- -------------------- ----------- ------
+          1 Clark           Sales                   1000.50          25 M     
+          3 Bob             Marketing               1500.25          35 M     
+          5 John            Sales                   1800.50          22 M     
+```
+
+- The `[]` represents any single character within the brackets 
+- The `[^]` represents any character not in the brackets
+
+```
+-- Select employees whose department start with `Sa`
+SELECT * FROM EmployeeTemp WHERE dept LIKE '[Sa]%';
+
+
+-- Select employees whose department does not start with `Sa`
+SELECT * FROM EmployeeTemp WHERE dept LIKE '[^Sa]%';
+```
+
+- Output
+
+```
+Output:
+
+empId       name            dept       salary               age         gender
+----------- --------------- ---------- -------------------- ----------- ------
+          1 Clark           Sales                   1000.50          25 M     
+          5 John            Sales                   1800.50          22 M     
+empId       name            dept       salary               age         gender
+----------- --------------- ---------- -------------------- ----------- ------
+          2 Alice           HR                      2000.75          30 F     
+          3 Bob             Marketing               1500.25          35 M     
+          4 Eve             Finance                 2500.00          28 F     
+```
+
+- Sorting
+
+```
+-- Select employees by sorting in ascending order of name
+SELECT * FROM EmployeeTemp order by name;
+
+-- Select employees by sorting in descending order of name
+SELECT * FROM EmployeeTemp order by name desc;
+```
+
+- Output
+
+```
+Output:
+
+empId       name            dept       salary               age         gender
+----------- --------------- ---------- -------------------- ----------- ------
+          2 Alice           HR                      2000.75          30 F     
+          3 Bob             Marketing               1500.25          35 M     
+          1 Clark           Sales                   1000.50          25 M     
+          4 Eve             Finance                 2500.00          28 F     
+          5 John            Sales                   1800.50          22 M     
+empId       name            dept       salary               age         gender
+----------- --------------- ---------- -------------------- ----------- ------
+          5 John            Sales                   1800.50          22 M     
+          4 Eve             Finance                 2500.00          28 F     
+          1 Clark           Sales                   1000.50          25 M     
+          3 Bob             Marketing               1500.25          35 M     
+          2 Alice           HR                      2000.75          30 F     
+```
+
+- Fetch top 1st row
+
+```
+-- Select Top 1
+SELECT TOP 1 * FROM EmployeeTemp;
+
+-- Select TOP 50% data from table (5/2+1=3 rows)
+SELECT TOP 50 percent * FROM EmployeeTemp;
+```
+
+- Output
+
+```
+Output:
+
+empId       name            dept       salary               age         gender
+----------- --------------- ---------- -------------------- ----------- ------
+          1 Clark           Sales                   1000.50          25 M     
+empId       name            dept       salary               age         gender
+----------- --------------- ---------- -------------------- ----------- ------
+          1 Clark           Sales                   1000.50          25 M     
+          2 Alice           HR                      2000.75          30 F     
+          3 Bob             Marketing               1500.25          35 M    
+```
+
+### Aggregate Functions
+
+- An aggregate function is a function that performs a calculation on a set of values, and returns a single value.
+- Aggregate functions are often used with the `GROUP BY` clause of the `SELECT` statement. The `GROUP BY` clause splits the result-set into groups of values and the aggregate function can be used to return a single value for each group.
+
+```
+-- Select average salary given for gender (M & F)
+select gender,avg(salary) from EmployeeTemp group by gender;
+
+-- Select max salary given for gender (M & F)
+select gender,max(salary) from EmployeeTemp group by gender;
+
+-- Select min salary given for gender (M & F)
+select gender,min(salary) from EmployeeTemp group by gender;
+
+-- Select sum of salary given for gender (M & F)
+select gender,sum(salary) from EmployeeTemp group by gender;
+
+
+-- Find the number of genders
+select gender,count(gender) from EmployeeTemp group by gender;
+
+```
+
+- Output
+
+```
+Output:
+
+gender                                         
+------ ----------------------------------------
+F                                   2250.375000
+M                                   1433.750000
+gender                     
+------ --------------------
+F                   2500.00
+M                   1800.50
+gender                     
+------ --------------------
+F                   2000.75
+M                   1000.50
+gender                                         
+------ ----------------------------------------
+F                                       4500.75
+M                                       4301.25
+gender            
+------ -----------
+F                2
+M                3
+```
+
+>[!NOTE]
+> - Aggregate functions ignore `NULL` values (except for `COUNT()` function).
+
+#### Having and Where clause
+
+- Consider below queries
+
+```
+CREATE TABLE Sales (
+    sale_id INT,
+    item VARCHAR(20),
+    quantity INT,
+    price DECIMAL(10, 2),
+    department VARCHAR(20)
+);
+
+-- Insert sample data
+INSERT INTO Sales (sale_id, item, quantity, price, department)
+VALUES
+(1, 'Laptop', 2, 1200.00, 'Electronics'),
+(2, 'TV', 1, 800.00, 'Electronics'),
+(3, 'Shoes', 3, 100.00, 'Clothing'),
+(4, 'Jacket', 1, 150.00, 'Clothing'),
+(5, 'Laptop', 1, 1200.00, 'Electronics'),
+(6, 'Laptop', 1, 1200.00, 'Electronics');
+
+
+-- Group by departments
+SELECT department, SUM(quantity) AS total_quantity
+FROM Sales
+GROUP BY department;
+
+-- Select those rows, first perform group by then filter than on it using having clause
+SELECT department, SUM(quantity) AS total_quantity
+FROM Sales
+GROUP BY department
+having sum(quantity)>4;
+```
+
+- Output
+
+```
+Output:
+
+department           total_quantity
+-------------------- --------------
+Clothing                          4
+Electronics                       5
+department           total_quantity
+-------------------- --------------
+Electronics                       5
+```
+
+- If we want to first filter out certain rows (using `WHERE`) and then apply aggregation conditions (using `HAVING`), we can combine both clauses.
+- `HAVING` Clause:
+  - Filters after aggregation has taken place.
+  - Applies conditions to aggregated results (e.g., groups created by GROUP BY).
+  - Typically used with aggregate functions.
+- `WHERE` Clause:
+  - Filters rows before any aggregation occurs.
+  - Applies conditions to individual rows.
+  - Cannot use aggregate functions directly (E.g `select * from Sales where sum(quantity)>4` this is invalid because we can't use `sum` aggregate function directly in `WHERE` clause)
+
+
+### Joins
+
+- The join clause allows us to retrieve data from two or more related tables into a meaningful result set. We can join the table using a SELECT statement and a join condition. It indicates how SQL Server can use data from one table to select rows from another table.
+- Consider below query
+
+```
+-- Employee table
+CREATE TABLE Employee (
+    empId INT,
+    name VARCHAR(15),
+    deptId INT
+);
+
+INSERT INTO Employee (empId, name, deptId)
+VALUES
+(1, 'Clark', 101),
+(2, 'Alice', 102),
+(3, 'Bob', NULL),
+(4, 'Eve', 104);
+
+-- Department table
+CREATE TABLE Department (
+    deptId INT,
+    deptName VARCHAR(15)
+);
+
+INSERT INTO Department (deptId, deptName)
+VALUES
+(101, 'Sales'),
+(102, 'HR'),
+(103, 'IT');
+
+select * from Employee;
+select * from Department;
+```
+
+- Output
+
+```
+Output:
+
+empId       name            deptId     
+----------- --------------- -----------
+          1 Clark                   101
+          2 Alice                   102
+          3 Bob                    NULL
+          4 Eve                     104
+deptId      deptName       
+----------- ---------------
+        101 Sales          
+        102 HR             
+        103 IT  
+```
+
+#### INNER JOIN
+
+- An INNER JOIN returns rows when there is a match in both tables. If no match is found, the row is excluded.
+
+```
+SELECT e.empId, e.name, d.deptName
+FROM Employee e
+INNER JOIN Department d ON e.deptId = d.deptId;
+```
+
+- Output
+
+```
+Output:
+
+empId       name            deptName       
+----------- --------------- ---------------
+          1 Clark           Sales          
+          2 Alice           HR    
+```
+
+#### LEFT JOIN or LEFT OUTER JOIN
+
+- A LEFT JOIN (or LEFT OUTER JOIN) returns all rows from the left table and the matched rows from the right table. If there is no match, `NULL` values are returned for columns from the right table.
+
+```
+SELECT e.empId, e.name, d.deptName
+FROM Employee e
+LEFT JOIN Department d ON e.deptId = d.deptId;
+```
+
+- Output
+
+```
+Output:
+
+empId       name            deptName       
+----------- --------------- ---------------
+          1 Clark           Sales          
+          2 Alice           HR             
+          3 Bob             NULL           
+          4 Eve             NULL  
+```
+
+#### RIGHT JOIN or RIGHT OUTER JOIN
+
+- A RIGHT JOIN (or RIGHT OUTER JOIN) returns all rows from the right table and the matched rows from the left table. If there is no match, `NULL` values are returned for columns from the left table.
+
+```
+SELECT e.empId, e.name, d.deptName
+FROM Employee e
+RIGHT JOIN Department d ON e.deptId = d.deptId;
+```
+
+- Output
+
+```
+Output:
+
+empId       name            deptName       
+----------- --------------- ---------------
+          1 Clark           Sales          
+          2 Alice           HR             
+       NULL NULL            IT             
+```
+
+#### FULL JOIN or FULL OUTER JOIN
+
+- A FULL JOIN (or FULL OUTER JOIN) returns all rows when there is a match in either the left or right table. Rows that do not have matches in either table will contain `NULL` values for the missing data.
+
+```
+SELECT e.empId, e.name, d.deptName
+FROM Employee e
+FULL JOIN Department d ON e.deptId = d.deptId;
+```
+
+- Output
+
+```
+Output:
+
+empId       name            deptName       
+----------- --------------- ---------------
+          1 Clark           Sales          
+          2 Alice           HR             
+          3 Bob             NULL           
+          4 Eve             NULL           
+       NULL NULL            IT  
+```
+
+#### CROSS JOIN
+
+- A CROSS JOIN combines every row from one table with every row from another table, regardless of any relationship or matching condition. Think of it as pairing each item in the first table with every item in the second table, producing a Cartesian product.
+- Let’s say you have two tables with data:
+
+| empId | name  |
+|-------|-------|
+| 1     | Clark |
+| 2     | Ava   |
+
+
+- Another table
+
+| deptId | deptName |
+|--------|----------|
+| 101    | Sales    |
+| 102    | HR       |
+
+- When you CROSS JOIN these tables, you get every possible combination
+
+| empId | name  | deptId | deptName |
+|-------|-------|--------|----------|
+| 1     | Clark | 101    | Sales    |
+| 1     | Clark | 102    | HR       |
+| 2     | Ava   | 101    | Sales    |
+
+- Query
+
+```
+SELECT e.empId, e.name, d.deptId, d.deptName
+FROM Employee e
+CROSS JOIN Department d;
+```
+
+- Output
+
+```
+Output:
+
+empId       name            deptId      deptName       
+----------- --------------- ----------- ---------------
+          1 Clark                   101 Sales          
+          2 Alice                   101 Sales          
+          3 Bob                     101 Sales          
+          4 Eve                     101 Sales          
+          1 Clark                   102 HR             
+          2 Alice                   102 HR             
+          3 Bob                     102 HR             
+          4 Eve                     102 HR             
+          1 Clark                   103 IT             
+          2 Alice                   103 IT             
+          3 Bob                     103 IT             
+          4 Eve                     103 IT   
+```
+
+#### SELF JOIN
+
+- A SELF JOIN is when a table is joined with itself. This can be helpful when you need to compare rows in a single table. For example, if you want to find pairs of employees from the same department, you can join the Employee table with itself.
+- A self join is a regular join, but the table is joined with itself.
+- Suppose we have a company with employees who might have managers.
+
+```
+CREATE TABLE Employee (
+    empId INT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    managerId INT NULL,
+    FOREIGN KEY (managerId) REFERENCES Employee(empId)  -- Self-referencing foreign key
+);
+
+INSERT INTO Employee (empId, name, managerId) VALUES
+(1, 'Clark', NULL),  -- Clark is the top-level manager (CEO)
+(2, 'Ava', 1),       -- Ava reports to Clark
+(3, 'Bob', 1),       -- Bob reports to Clark
+(4, 'Eve', 2),       -- Eve reports to Ava
+(5, 'David', 2),     -- David reports to Ava
+(6, 'Mary', 3);      -- Mary reports to Bob
+
+
+select * from Employee;
+
+SELECT 
+    e1.empId AS EmployeeId,
+    e1.name AS EmployeeName,
+    e2.empId AS ManagerId,
+    e2.name AS ManagerName
+FROM 
+    Employee e1
+ JOIN 
+    Employee e2 ON e1.managerId = e2.empId;
+```
+
+- Output
+
+```
+Output:
+
+empId       name                                               managerId  
+----------- -------------------------------------------------- -----------
+          1 Clark                                                     NULL
+          2 Ava                                                          1
+          3 Bob                                                          1
+          4 Eve                                                          2
+          5 David                                                        2
+          6 Mary                                                         3
+EmployeeId  EmployeeName                                       ManagerId   ManagerName                                       
+----------- -------------------------------------------------- ----------- --------------------------------------------------
+          2 Ava                                                          1 Clark                                             
+          3 Bob                                                          1 Clark                                             
+          4 Eve                                                          2 Ava                                               
+          5 David                                                        2 Ava                                               
+          6 Mary                                                         3 Bob                                               
+```
+
+![alt text](image.png)
