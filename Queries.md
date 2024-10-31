@@ -1783,17 +1783,650 @@ END;
 drop proc testProc
 ```
 
+>[!IMPORTANT]
+> - Stored procedure re-uses execution plan, when we write a normal query with varying parameter , a new execution plan is generated. Whereas in stored procedure even after varying the parameter, it uses the same execution plan.
+> - 
+
+## Loops
+
+### While Loop 
+
+```
+DECLARE @Counter INT = 1;
+
+WHILE @Counter <= 5
+BEGIN
+    PRINT 'Loop iteration: ' + CAST(@Counter AS VARCHAR);
+    SET @Counter += 1;
+END
+```
+
+- Output 
+
+```
+Loop iteration: 1
+Loop iteration: 2
+Loop iteration: 3
+Loop iteration: 4
+Loop iteration: 5
+```
+
+- Deleting data in batch processes 
+
+```
+
+-- create
+CREATE TABLE EMPLOYEE (
+  empId int,
+  name varchar(15),
+  dept varchar(10)
+);
+
+-- insert
+INSERT INTO EMPLOYEE(empId,name,dept) VALUES (1, 'Clark', 'Sales');
+INSERT INTO EMPLOYEE(empId,name,dept) VALUES (2, 'Dave', 'Accounting');
+INSERT INTO EMPLOYEE(empId,name,dept) VALUES (3, 'Ava', 'Sales');
+INSERT INTO EMPLOYEE(empId,name,dept) VALUES (3, 'Ava', 'Sales');
+INSERT INTO EMPLOYEE(empId,name,dept) VALUES (3, 'Ava', 'Sales');
+INSERT INTO EMPLOYEE(empId,name,dept) VALUES (3, 'Ava', 'Sales');
+INSERT INTO EMPLOYEE(empId,name,dept) VALUES (3, 'Ava', 'Sales');
+INSERT INTO EMPLOYEE(empId,name,dept) VALUES (3, 'Ava', 'Sales');
+INSERT INTO EMPLOYEE(empId,name,dept) VALUES (3, 'Ava', 'Sales');
+
+-- fetch 
+SELECT * FROM EMPLOYEE;
+
+
+DECLARE @BatchSize INT = 2;
+DECLARE @RowCount INT;
+
+SET @RowCount = 1;  -- Initial non-zero value to start the loop
+
+WHILE @RowCount > 0
+BEGIN
+    DELETE TOP (@BatchSize) FROM EMPLOYEE;
+    SET @RowCount = @@ROWCOUNT;  -- Get the number of affected rows
+    print @RowCount;
+END
+
+-- fetch 
+SELECT * FROM EMPLOYEE;
+
+GO
+```
+
+- Output 
+
+```
+Output:
+
+empId       name            dept      
+----------- --------------- ----------
+          1 Clark           Sales     
+          2 Dave            Accounting
+          3 Ava             Sales     
+          3 Ava             Sales     
+          3 Ava             Sales     
+          3 Ava             Sales     
+          3 Ava             Sales     
+          3 Ava             Sales     
+          3 Ava             Sales     
+2
+2
+2
+2
+1
+0
+empId       name            dept      
+----------- --------------- ----------
+```
+
+### Cursor
+
+- In SQL Server, a cursor is a database object that retrieves and manipulates data row by row, while a loop is a control flow statement that repeats a block of code.
+
+```
+CREATE TABLE Employees (
+    EmployeeID INT PRIMARY KEY,
+    FirstName NVARCHAR(50),
+    LastName NVARCHAR(50),
+    Salary DECIMAL(10, 2)
+);
+
+INSERT INTO Employees (EmployeeID, FirstName, LastName, Salary)
+VALUES 
+    (1, 'John', 'Doe', 50000),
+    (2, 'Jane', 'Smith', 60000),
+    (3, 'Michael', 'Johnson', 45000),
+    (4, 'Emily', 'Davis', 70000),
+    (5, 'David', 'Wilson', 48000);
+
+
+-- Declare the cursor for the Employees table
+DECLARE EmployeeCursor CURSOR FOR
+SELECT EmployeeID, Salary
+FROM Employees;
+
+-- Declare variables to hold data fetched from the cursor
+DECLARE @EmployeeID INT;
+DECLARE @Salary DECIMAL(10, 2);
+
+-- Open the cursor
+OPEN EmployeeCursor;
+
+-- Fetch the first row
+FETCH NEXT FROM EmployeeCursor INTO @EmployeeID, @Salary;
+
+-- Loop through the rows
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    
+    -- Check if Salary is below 50000
+    IF @Salary < 50000
+    BEGIN
+        -- Update Salary by 10%
+        UPDATE Employees
+        SET Salary = Salary * 1.10
+        WHERE EmployeeID = @EmployeeID;
+
+        PRINT 'Updated salary for EmployeeID ' + CAST(@EmployeeID AS NVARCHAR(10));
+    END
+
+    -- Fetch the next row
+    FETCH NEXT FROM EmployeeCursor INTO @EmployeeID, @Salary;
+END
+
+-- Close and deallocate the cursor
+CLOSE EmployeeCursor;
+DEALLOCATE EmployeeCursor;
+```
+
+- Output 
+
+```
+Output:
+
+Updated salary for EmployeeID 3
+Updated salary for EmployeeID 5
+```
+
+- DECLARE Cursor: `EmployeeCursor` is created to iterate over `EmployeeID` and `Salary` from the `Employees` table.
+- FETCH and WHILE Loop: We use `FETCH NEXT` to get each row's data. The `WHILE` loop continues as long as` @@FETCH_STATUS = 0`, indicating that rows are still available.
+- The `@@FETCH_STATUS` system function in SQL Server is used to determine the status of the last FETCH statement issued against a cursor. Its primary purpose is to let the program know whether there are more rows to fetch or if the cursor has reached the end of the result set.
+- Here's how `@@FETCH_STATUS` behaves:
+  - `0` : The FETCH was successful, meaning there is a row to process.
+  - `-1`: The FETCH failed because the cursor has gone past the last row.
+  - `-2`: The FETCH failed due to an error in the row, such as if the row was missing or inaccessible.
+- Condition and Update: Inside the loop, if `Salary` is below 50000, we apply a 10% increase and print a message for each update.
+- CLOSE and DEALLOCATE: After processing, we close and deallocate the cursor to free resources.
+
+## Functions
+
+- Functions in SQL Server are routines that accept parameters, perform a specific task, and return a result. Functions can simplify repetitive tasks, encapsulate logic, and improve query readability.
+
+## Types of functions
+
+### Built In Function
+
+```
+-- Create a table named 'Employees' with columns for ID, Name, Salary, and HireDate
+CREATE TABLE Employees (
+    EmployeeID INT IDENTITY(1,1) PRIMARY KEY,
+    EmployeeName VARCHAR(50) NOT NULL,
+    Salary DECIMAL(10,2),
+    HireDate DATE
+);
+
+-- Insert data into the 'Employees' table using various built-in functions
+INSERT INTO Employees (EmployeeName, Salary, HireDate)
+VALUES
+    ('John Doe', 50000.00, GETDATE()),  -- Gets the current date and time
+    ('Jane Smith', 60000.00, DATEADD(YEAR, -5, GETDATE())),  -- Adds -5 years to the current date
+    ('Michael Johnson', 45000.00, DATEFROMPARTS(2022, 11, 25));  -- Creates a date from specific parts
+    
+-- Select employee names in uppercase
+SELECT UPPER(EmployeeName) AS UppercaseName
+FROM Employees;
+print "";
+
+-- Concatenate first and last names
+SELECT CONCAT(EmployeeName, ' ', 'Last Name') AS FullName
+FROM Employees;
+print "";
+
+-- Extract the first 5 characters of the name
+SELECT SUBSTRING(EmployeeName, 1, 5) AS FirstNamePart
+FROM Employees;
+print "";
+
+-- Find the position of 'o' in the name
+SELECT CHARINDEX('o', EmployeeName) AS PositionOfO
+FROM Employees;
+print "";
+
+-- Replace 'John' with 'Jane' in the name
+SELECT REPLACE(EmployeeName, 'John', 'Jane') AS ReplacedName
+FROM Employees;
+print "";
+
+-- Get the current date and time
+SELECT GETDATE() AS CurrentDateTime;
+print "";
+
+-- Add 5 days to the hire date
+SELECT DATEADD(DAY, 5, HireDate) AS NewHireDate
+FROM Employees;
+print "";
+
+-- Calculate the difference between two dates
+SELECT DATEDIFF(DAY, HireDate, GETDATE()) AS DaysSinceHire
+FROM Employees;
+print "";
+
+-- Extract year, month, and day from the hire date
+SELECT YEAR(HireDate) AS HireYear, MONTH(HireDate) AS HireMonth, DAY(HireDate) AS HireDay
+FROM Employees;
+print "";
+
+-- Extract year, month, and day from the hire date (The difference will be calculated as per number of months)
+SELECT YEAR(HireDate) AS HireYear, MONTH(HireDate) AS HireMonth, DAY(HireDate) AS HireDay
+FROM Employees;
+print "";
+
+-- Calculate the absolute value of a salary difference
+SELECT ABS(Salary - 50000) AS SalaryDifference
+FROM Employees;
+print "";
+
+-- Round a salary to the nearest integer
+SELECT ROUND(Salary, 0) AS RoundedSalary
+FROM Employees;
+print "";
+
+-- Calculate the power of a number
+SELECT POWER(2, 3) AS PowerOfTwo;
+print "";
+
+-- Find the ceiling and floor of a decimal number
+SELECT CEILING(3.14), FLOOR(3.14);
+print "";
+
+-- Calculate the average salary
+SELECT AVG(Salary) AS AverageSalary
+FROM Employees;
+print "";
+
+-- Find the maximum salary
+SELECT MAX(Salary) AS MaxSalary
+FROM Employees;
+print "";
+
+-- Round the salary to the nearest hundred
+SELECT ROUND(Salary, -2) AS RoundedSalary
+FROM Employees;
+print "";
+
+-- Calculate the square root of the salary
+SELECT SQRT(Salary) AS SalarySqrt
+FROM Employees;
+```
+
+- Output 
+
+```
+Output:
+
+UppercaseName                                     
+--------------------------------------------------
+JOHN DOE                                          
+JANE SMITH                                        
+MICHAEL JOHNSON                                   
+ 
+FullName                                                    
+------------------------------------------------------------
+John Doe Last Name                                          
+Jane Smith Last Name                                        
+Michael Johnson Last Name                                   
+ 
+FirstNamePart
+-------------
+John         
+Jane         
+Micha        
+ 
+PositionOfO
+-----------
+          2
+          0
+         10
+ 
+ReplacedName                                                                                                                                                                                                                                                                                                                                                                                              
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Jane Doe                                                                                                                                                                                                                                                                                                                                                                                                                                  
+Jane Smith                                                                                                                                                                                                                                                                          
+Michael Janeson                                                                                                                                                                                                                                                     
+ 
+CurrentDateTime        
+-----------------------
+2024-10-31 11:25:14.437
+ 
+NewHireDate     
+----------------
+      2024-11-05
+      2019-11-05
+      2022-11-30
+ 
+DaysSinceHire
+-------------
+            0
+         1827
+          706
+
+DaysSinceHire
+-------------
+            0
+           60
+           23
+ 
+HireYear    HireMonth   HireDay    
+----------- ----------- -----------
+       2024          10          31
+       2019          10          31
+       2022          11          25
+ 
+SalaryDifference
+----------------
+             .00
+        10000.00
+         5000.00
+ 
+RoundedSalary
+-------------
+     50000.00
+     60000.00
+     45000.00
+ 
+PowerOfTwo 
+-----------
+          8
+ 
+           
+----- -----
+    4     3
+ 
+AverageSalary                           
+----------------------------------------
+                            51666.666666
+ 
+MaxSalary   
+------------
+    60000.00
+ 
+RoundedSalary
+-------------
+     50000.00
+     60000.00
+     45000.00
+ 
+SalarySqrt              
+------------------------
+      223.60679774997897
+      244.94897427831782
+      212.13203435596427
+```
+
+
+### User defined Function
+
+```
+
+CREATE FUNCTION CalculateTax(@Amount DECIMAL(10, 2))
+RETURNS DECIMAL(10, 2)
+AS
+BEGIN
+    DECLARE @Tax DECIMAL(10, 2);
+    SET @Tax = @Amount * 0.10;
+    RETURN @Tax;
+END;
+
+CREATE TABLE Employees (
+    EmployeeID INT PRIMARY KEY,
+    FirstName NVARCHAR(50),
+    LastName NVARCHAR(50),
+    Salary DECIMAL(10, 2)
+);
+INSERT INTO Employees (EmployeeID, FirstName, LastName, Salary)
+VALUES 
+    (1, 'John', 'Doe', 50000),
+    (2, 'Jane', 'Smith', 60000),
+    (3, 'Michael', 'Johnson', 45000),
+    (4, 'Emily', 'Davis', 70000),
+    (5, 'David', 'Wilson', 48000);
 
 
 
+-- Use the function to calculate tax for each employee's salary
+SELECT 
+    EmployeeID,
+    FirstName,
+    LastName,
+    Salary,
+    dbo.CalculateTax(Salary) AS Tax
+FROM Employees;
+```
+
+### Scalar-Valued Functions (SVFs)
+
+- These functions return a single scalar value (like an integer, decimal, or string) for each input. They can be used wherever a scalar expression is allowed, such as in `SELECT` statements or `WHERE` clauses.
+
+```
+CREATE FUNCTION dbo.CalculateDiscount(@Price DECIMAL(10, 2))
+RETURNS DECIMAL(10, 2)
+AS
+BEGIN
+    RETURN @Price * 0.90;  -- Apply a 10% discount
+END;
+
+-- Usage:
+SELECT dbo.CalculateDiscount(100.00) AS DiscountedPrice;  -- Returns 90.00
+```
+
+### Table-Valued Functions (TVFs)
+
+- Table-valued functions return a table, making them useful when you need to return a dataset rather than a single value. They are often used to encapsulate complex queries.
+
+#### Types of Table-Valued Functions:
+
+- **Inline Table-Valued Functions (ITVF)**: These functions have a single SELECT statement and do not use a BEGIN...END block. They are typically more efficient.
+
+```
+CREATE FUNCTION dbo.GetHighSalaryEmployees(@MinSalary DECIMAL(10, 2))
+RETURNS TABLE
+AS
+RETURN
+(
+    SELECT EmployeeID, FirstName, LastName, Salary
+    FROM Employees
+    WHERE Salary > @MinSalary
+);
+
+-- Usage:
+SELECT * FROM dbo.GetHighSalaryEmployees(50000);
+```
+
+- **Multi-Statement Table-Valued Functions (MSTVF)**: These functions can include multiple statements, use temporary tables or variables, and use a `BEGIN...END` block. They are more flexible but can be slower than inline TVFs.
+
+```
+CREATE FUNCTION dbo.GetAnnualSalaries()
+RETURNS @AnnualSalaries TABLE
+(
+    EmployeeID INT,
+    AnnualSalary DECIMAL(10, 2)
+)
+AS
+BEGIN
+    INSERT INTO @AnnualSalaries
+    SELECT EmployeeID, Salary * 12 AS AnnualSalary
+    FROM Employees;
+    
+    RETURN;
+END;
+
+-- Usage:
+SELECT * FROM dbo.GetAnnualSalaries();
+```
 
 
+## Cast and Convert Functions
+
+- The `CAST` and `CONVERT` functions in SQL Server are both used to change data from one type to another, like changing a string to an integer or a date to a string.
+
+### CAST 
+
+- The `CAST` function is a straightforward way to convert data from one type to another. It's part of the SQL ANSI standard (more on ANSI below), which means it's a standard function across multiple databases, not just SQL Server.
+- Syntax 
+
+```
+CAST ( expression AS target_data_type )
+```
+
+- Example 
+
+```
+SELECT CAST('2024-01-01' AS DATE) AS DateValue;
+SELECT CAST(123.456 AS INT) AS IntegerValue;
+```
+
+- Output 
+
+```
+Output:
+
+DateValue       
+----------------
+      2024-01-01
+IntegerValue
+------------
+         123
+```
+
+- `CAST` is ANSI-compliant, meaning it follows a standard defined by the American National Standards Institute (ANSI), making it compatible with other databases. `CAST` is portable across different databases like MySQL, PostgreSQL, and Oracle.
+
+### Convert 
+
+- The `CONVERT` function is similar to CAST but is SQL Server-specific and provides more flexibility. It has an optional third parameter, called style, which is especially useful for formatting date and time conversions.
+- Syntax
+
+```
+CONVERT ( target_data_type, expression [, style] )
+```
+
+- Example
+
+```
+-- Convert date with style
+SELECT CONVERT(VARCHAR, GETDATE(), 101) AS Date_US_Format;
+
+-- Convert integer to string
+SELECT CONVERT(VARCHAR, 12345) AS StringValue;
+```
+
+- Output 
+
+```
+Output:
+
+Date_US_Format                
+------------------------------
+10/31/2024                    
+StringValue                   
+------------------------------
+12345 
+```
+
+- The style `101` formats the date in `MM/DD/YYYY`format, which is commonly used in the U.S.
+- `CONVERT` is SQL Server-specific and includes additional options like style, which allows for advanced formatting, especially with date and time. `CONVERT` is limited to SQL Server, so using CONVERT makes the code less portable.
+- Consider below query
+
+```
+-- This will cause an error because 'hello' cannot be converted to an integer
+SELECT CAST('hello' AS INT) AS FailedConversion;
+
+-- Conversion works, but decimals are truncated, causing data loss
+SELECT CAST(123.456 AS INT) AS TruncatedValue;  -- Result: 123
+```
+
+- Here the conversion is invalid which leads to error, so SQL server also provides `TRY_CAST` and `TRY_CONVERT`, which return NULL instead of an error if the conversion fails.
+
+```
+SELECT TRY_CAST('hello' AS INT) AS FailedConversion; -- NULL
+
+-- Conversion works, but decimals are truncated, causing data loss
+SELECT CAST(123.456 AS INT) AS TruncatedValue;  -- Result: 123
+```
+
+- Output 
+
+```
+Output:
+
+FailedConversion
+----------------
+            NULL
+TruncatedValue
+--------------
+           123
+```
+
+## Temporary Tables 
+
+- A temporary (temp) table in SQL Server is a special table that cannot be stored permanently on the database server. This table keeps a subset of data from a regular table and can be reused multiple times in a particular session. We cannot store this table in the memory. Since this table exists temporarily on the current database server, it will be deleted automatically when the current session ends, or the user terminates the database connection. We can get the temporary tables in the system database `tempdb`.
+- Temporary tables take up space in the SQL Server `tempdb` system database. The amount of space depends on the data stored in the temporary table. If large data volumes are stored, the `tempdb` may grow, which could impact performance if the database is not configured to handle the load.
+
+### Types of Temporary Tables
+
+- SQL Server provides two main types of temporary tables:
+
+**1. Local Temporary Tables:** These are created with a single # prefix (e.g., #TempTable). They are session-specific, which means they are only accessible within the current session or connection that created them. Local temporary tables are automatically deleted when the session ends or when the table is dropped manually.
+
+```
+-- Create a local temporary table
+CREATE TABLE #EmployeeTemp (
+    EmployeeID INT,
+    Name NVARCHAR(100),
+    Salary DECIMAL(10, 2)
+);
+
+-- Insert data into the temporary table
+INSERT INTO #EmployeeTemp (EmployeeID, Name, Salary)
+VALUES (1, 'Alice', 75000), (2, 'Bob', 65000), (3, 'Charlie', 82000);
+
+-- Select data from the temporary table
+SELECT * FROM #EmployeeTemp;
+
+-- Drop the temporary table manually (optional)
+DROP TABLE #EmployeeTemp;
+```
 
 
+**2. Global Temporary Tables:** These are created with a double ## prefix (e.g., ##GlobalTempTable). Unlike local temporary tables, global temporary tables are accessible by any session or connection. However, they are automatically deleted when the session that created them is closed and there are no active connections using them.
 
+```
+-- Create a local temporary table
+CREATE TABLE #EmployeeTemp (
+    EmployeeID INT,
+    Name NVARCHAR(100),
+    Salary DECIMAL(10, 2)
+);
 
+-- Insert data into the temporary table
+INSERT INTO #EmployeeTemp (EmployeeID, Name, Salary)
+VALUES (1, 'Alice', 75000), (2, 'Bob', 65000), (3, 'Charlie', 82000);
 
+-- Select data from the temporary table
+SELECT * FROM #EmployeeTemp;
 
-
-
+-- Drop the temporary table manually (optional)
+DROP TABLE #EmployeeTemp;
+```
 
