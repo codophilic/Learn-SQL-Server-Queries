@@ -2430,3 +2430,286 @@ SELECT * FROM #EmployeeTemp;
 DROP TABLE #EmployeeTemp;
 ```
 
+## Views
+
+- In SQL Server, views are virtual tables created by a query that pulls data from one or more tables. Views do not physically store data; instead, they dynamically present a subset or a transformation of data whenever queried. They are a powerful tool to simplify complex queries, improve security, and offer a consistent interface to data.
+
+```
+CREATE TABLE Employees (
+    EmployeeID INT PRIMARY KEY,
+    Name NVARCHAR(100),
+    Department NVARCHAR(100),
+    Salary DECIMAL(10, 2)
+);
+
+-- Insert sample data
+INSERT INTO Employees (EmployeeID, Name, Department, Salary)
+VALUES (1, 'Alice', 'HR', 55000), 
+       (2, 'Bob', 'Finance', 62000), 
+       (3, 'Charlie', 'IT', 70000);
+
+CREATE VIEW vw_HighSalaryEmployees AS
+SELECT Name, Salary
+FROM Employees
+WHERE Salary > 60000;
+
+SELECT * FROM vw_HighSalaryEmployees;
+```
+
+- This query returns only employees with a salary greater than 60,000.
+- Updating view `vw_HighSalaryEmployees`
+
+```
+-- Update the Salary for employees in the view
+UPDATE vw_HighSalaryEmployees
+SET Salary = Salary + 5000
+WHERE Name = 'Bob';
+```
+
+- Delete data from view 
+
+```
+-- Delete an employee from the view
+DELETE FROM vw_HighSalaryEmployees
+WHERE Name = 'Charlie';
+```
+
+- Drop the view
+
+```
+DROP VIEW vw_HighSalaryEmployees;
+```
+
+- **Views are not session-based; they are persistent database objects that exist independently of sessions. As long as a view is not dropped, any session can query it, and any changes to the underlying table data will be reflected in the view in real-time.**
+
+
+### Why Views
+
+- **Security**: Views can be used to restrict access to underlying tables by allowing users to access data through the view instead. This can help prevent users from accidentally or intentionally accessing sensitive data.
+- **Access control**: Views can provide an additional layer of access control by allowing you to control what data users can see and how they can interact with it.
+- **Data Abstraction**: They provide a level of abstraction from the underlying table structures, which is helpful if table structures need to change without impacting dependent applications.
+
+### Purpose of Views 
+
+- Imagine you have a table, `T_OLD`, that contains data for active users only. Now, for various reasons, you decide to replace this with a new table, `T_NEW`, which will store data for both active and inactive users. The new table will have an extra column, active, to indicate a user's status.
+- If you were to drop `T_OLD` and modify every query across your applications to point to `T_NEW` immediately, it would be challenging. In a large system, you might have numerous queries referencing `T_OLD`, making the rollout difficult to coordinate, and increasing the risk of errors or downtime.
+- Two Approaches to Handle This Change
+
+1. Cold Turkey:
+  - This approach involves dropping `T_OLD`, creating `T_NEW`, and updating every query in the system to reference `T_NEW`. You would then test and release all changes simultaneously.
+  - This is high-risk, especially in large systems where updating and coordinating every query can be complex and time-consuming. If anything goes wrong, fixing it requires significant effort across many parts of the system.
+
+2. Gradual Migration Using Views:
+  - In this approach, you create the `T_NEW` table with the extra column but instead of immediately dropping `T_OLD`, you replace `T_OLD` with a view that provides the same data and structure as the original `T_OLD` table.
+  - The view can be defined to return only active users, making it appear identical to `T_OLD`. For instance:
+
+```
+CREATE VIEW T_OLD AS
+SELECT column1, column2, column3 -- all columns from T_NEW except `active`
+FROM T_NEW
+WHERE active = 1;
+```
+
+- Since the view `T_OLD` behaves just like the original table, all existing queries on `T_OLD` will continue to work without requiring immediate changes. You now have the freedom to gradually update your application code over time to use `T_NEW` directly.
+- This approach allows for a smooth migration without affecting any running code. It enables you to:
+  - Decouple database changes from code changes: Code changes can happen at a slower, more manageable pace.
+  - Reduce risk: If issues arise with `T_NEW`, you can revert easily, minimizing the impact on the application.
+  - Avoid downtime or immediate testing of all queries: Since `T_OLD` appears unchanged to the application, it does not require immediate testing or re-releasing of all dependent code.
+
+## Indexes
+
+- Indexes in SQL Server are database objects that enhance the speed of data retrieval on tables by allowing quick access to specific rows based on certain column values. Think of indexes like an index in a book: instead of flipping through every page, you can jump directly to the section you need.
+
+### Clustered Index
+
+- Sorts and stores the actual data rows in the table based on the indexed column(s).
+- A table can have only one clustered index because the data rows can only be sorted one way.
+- Typically created on the primary key column, as it enforces unique values and speeds up retrieval.
+
+```
+CREATE CLUSTERED INDEX idx_EmployeeID ON Employees (EmployeeID ASC, Gender ASC);
+```
+
+- Clustered indexes are created on table, it sorts the data of the table. Now since it sorts the data, if we have two clustered indexes it would lead to conflict like as per which index should SQL server sort the data. Thats why it has only one indexed.
+- When we create primary key by default it creates a unique cluster index, thats why our ID columns of table are always sorted.
+
+### Non-Clustered Index:
+
+- Contains a sorted list of values and pointers to the actual data rows in the table. Since it stores the pointer or memory address along with sorted data column, these pointers which are not part of actual requires additional space.
+- A table can have multiple non-clustered indexes.
+- Useful for improving the speed of queries that filter or sort by columns other than the clustered index.
+
+```
+CREATE NONCLUSTERED INDEX idx_Name ON Employees (Name);
+```
+
+- Clustered indexes are faster than Non-clustered indexes because, if any column which is not part of index needs to be query, the clustered indexes can access it faster than non-clustered indexes and the non-clustered indexes are stored in separately from the table.
+
+### Unique Index:
+
+- Ensures all values in the index column(s) are unique, preventing duplicate values.
+- Can be clustered or non-clustered.
+- Often used to enforce unique constraints other than the primary key.
+
+```
+CREATE UNIQUE INDEX idx_UniqueEmail ON Employees (Email);
+```
+
+### Filtered Index:
+
+- A non-clustered index with a filter (WHERE clause) to include only a subset of data.
+- Efficient for indexing specific data ranges or subsets, such as active users only.
+
+```
+CREATE NONCLUSTERED INDEX idx_ActiveUsers ON Employees (Status)
+WHERE Status = 'Active';
+```
+
+- Indexes in SQL Server are organized as B-trees (balanced trees) for efficient searching and sorting. Here's how they work for the two main types of indexes.
+
+## CTE (Common Table Expression)
+
+- Common Table Expressions (CTEs) are a powerful feature in SQL that allow you to define temporary result sets that can be used within a query. They provide a way to break down complex queries into more manageable and understandable parts, improving readability and maintainability. 
+- Syntax of CTE 
+
+```
+WITH CTE_Name AS (
+    SELECT column1, column2
+    FROM table_name
+    WHERE condition
+)
+SELECT * 
+FROM CTE_Name;
+```
+
+- Lets see an example
+
+```
+CREATE TABLE Employees (
+    EmployeeID INT PRIMARY KEY,
+    Name NVARCHAR(50),
+    ManagerID INT,
+    Salary DECIMAL(10, 2)
+);
+
+-- Inserting data into Employees table
+INSERT INTO Employees (EmployeeID, Name, ManagerID, Salary) VALUES
+(1, 'Alice', NULL, 90000),      -- Top-level manager
+(2, 'Bob', 1, 75000),           -- Reports to Alice
+(3, 'Charlie', 1, 75000),       -- Reports to Alice
+(4, 'David', 2, 50000),         -- Reports to Bob
+(5, 'Eva', 2, 50000),           -- Reports to Bob
+(6, 'Frank', 3, 45000);         -- Reports to Charlie
+
+
+WITH EmployeeHierarchy AS (
+    -- Anchor member: Start with employees directly reporting to a specified manager
+    SELECT EmployeeID, Name, ManagerID, Salary, 1 AS Level
+    FROM Employees
+    WHERE ManagerID = 1  -- Change this ID as needed to start at any level
+
+    UNION ALL
+
+    -- Recursive member: Find employees reporting to each employee in the hierarchy
+    SELECT e.EmployeeID, e.Name, e.ManagerID, e.Salary, eh.Level + 1
+    FROM Employees e
+    JOIN EmployeeHierarchy eh ON e.ManagerID = eh.EmployeeID
+)
+SELECT * FROM EmployeeHierarchy;
+```
+
+- Output 
+
+```
+Output:
+
+EmployeeID  Name                                               ManagerID   Salary       Level      
+----------- -------------------------------------------------- ----------- ------------ -----------
+          2 Bob                                                          1     75000.00           1
+          3 Charlie                                                      1     75000.00           1
+          6 Frank                                                        3     45000.00           2
+          4 David                                                        2     50000.00           2
+          5 Eva                                                          2     50000.00           2
+```
+
+- All the CTE will be created and will be executed followed by any INSERT , DELETE , UPDATE or SELECT query. If not then it will give error.
+
+```
+CREATE TABLE Employees (
+    EmployeeID INT PRIMARY KEY,
+    Name NVARCHAR(50),
+    ManagerID INT,
+    Salary DECIMAL(10, 2)
+);
+
+-- Inserting data into Employees table
+INSERT INTO Employees (EmployeeID, Name, ManagerID, Salary) VALUES
+(1, 'Alice', NULL, 90000),      -- Top-level manager
+(2, 'Bob', 1, 75000),           -- Reports to Alice
+(3, 'Charlie', 1, 75000),       -- Reports to Alice
+(4, 'David', 2, 50000),         -- Reports to Bob
+(5, 'Eva', 2, 50000),           -- Reports to Bob
+(6, 'Frank', 3, 45000);         -- Reports to Charlie
+
+
+WITH EmployeeHierarchy AS (
+    -- Anchor member: Start with employees directly reporting to a specified manager
+    SELECT EmployeeID, Name, ManagerID, Salary, 1 AS Level
+    FROM Employees
+    WHERE ManagerID = 1  -- Change this ID as needed to start at any level
+
+    UNION ALL
+
+    -- Recursive member: Find employees reporting to each employee in the hierarchy
+    SELECT e.EmployeeID, e.Name, e.ManagerID, e.Salary, eh.Level + 1
+    FROM Employees e
+    JOIN EmployeeHierarchy eh ON e.ManagerID = eh.EmployeeID
+)
+
+select 'hello'
+
+SELECT * FROM EmployeeHierarchy;
+```
+
+- Output error
+
+```
+Msg 422, Level 16, State 4, Server 1949b5d491a7, Line 35
+Common table expression defined but not used.
+```
+
+- The above example is of where we selects all employees reporting directly to a manager (e.g., ManagerID = 1). Continues to find employees who report to those found in the previous step, creating a hierarchical structure.
+-  This recursive CTE allows you to query hierarchical data in one go, which would otherwise require complex joins or looping.
+- Say you want to calculate both the average salary and identify employees earning above the average. Using a CTE, you can calculate the average once and reference it multiple times.
+
+```
+WITH AvgSalary AS (
+    SELECT AVG(Salary) AS AverageSalary
+    FROM Employees
+)
+SELECT EmployeeID, Name, Salary
+FROM Employees, AvgSalary
+WHERE Salary > AvgSalary.AverageSalary;
+```
+
+- Other examples
+
+```
+CREATE TABLE HighEarners (
+    EmployeeID INT PRIMARY KEY,
+    Name NVARCHAR(50),
+    Salary DECIMAL(10, 2)
+);
+
+WITH HighSalaryEmployees AS (
+    SELECT EmployeeID, Name, Salary
+    FROM Employees
+    WHERE Salary > (SELECT AVG(Salary) FROM Employees)
+)
+INSERT INTO HighEarners (EmployeeID, Name, Salary)
+SELECT EmployeeID, Name, Salary FROM HighSalaryEmployees;
+```
+
+- CTEs: They exist only for the duration of the query and are well-suited for recursion and subquery simplification.
+- Temporary Tables: These persist until the session ends or are explicitly dropped, which may cause temporary storage overhead.
+- Views: Persistent and saved in the database, views don’t support recursive queries directly and are best for reusable static query patterns.
