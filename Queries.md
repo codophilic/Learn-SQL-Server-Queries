@@ -1256,3 +1256,274 @@ EmployeeId  EmployeeName                                       ManagerId   Manag
 ```
 
 ![alt text](image.png)
+
+
+
+### Different Ways to Replace `NULL`
+
+#### ISNULL
+
+- Using `ISNULL()` function you can query output and given some value to it. `ISNULL` takes two arguments. If the first argument is NULL, it returns the second argument; otherwise, it returns the first argument
+
+
+```
+
+-- create
+CREATE TABLE EMPLOYEE (
+  empId int,
+  first_name varchar(15),
+  middle_name varchar(15),
+  last_name varchar(15),
+  dept varchar(10),
+);
+
+-- insert
+INSERT INTO EMPLOYEE(empId,first_name,middle_name,last_name,dept) VALUES (1, 'Clark', "A", "Mark",'Sales');
+INSERT INTO EMPLOYEE(empId,first_name,middle_name,last_name,dept) VALUES (2, 'Dave', "B", "Ford",'Accounting');
+INSERT INTO EMPLOYEE(empId,first_name,middle_name,last_name,dept) VALUES (3, 'Ava', "C", "Ambani",'Sales');
+INSERT INTO EMPLOYEE(empId,first_name,middle_name,last_name,dept) VALUES (4, NULL, "C", "Ambani",'Sales');
+INSERT INTO EMPLOYEE(empId,first_name,middle_name,last_name,dept) VALUES (5, 'Ava', NULL, "Ambani",'Sales');
+INSERT INTO EMPLOYEE(empId,first_name,middle_name,last_name,dept) VALUES (6, 'Ava', "C", NULL,'Sales');
+
+
+
+-- fetch 
+SELECT ISNULL(first_name,"first name not given") FROM EMPLOYEE;
+GO
+```
+
+- Output
+
+```
+Output:
+
+               
+---------------
+Clark          
+Dave           
+Ava            
+first name not 
+Ava            
+Ava            
+```
+
+#### COALESCE
+
+- COALESCE can take multiple arguments and returns the first non-NULL value in the list. It's useful when you want to check several columns for `NULL` values.
+
+- Consider below query
+
+```
+
+-- create
+CREATE TABLE EMPLOYEE (
+  empId int,
+  first_name varchar(15),
+  middle_name varchar(15),
+  last_name varchar(15),
+  dept varchar(10),
+);
+
+-- insert
+INSERT INTO EMPLOYEE(empId,first_name,middle_name,last_name,dept) VALUES (1, 'Clark', "A", "Mark",'Sales');
+INSERT INTO EMPLOYEE(empId,first_name,middle_name,last_name,dept) VALUES (2, 'Dave', "B", "Ford",'Accounting');
+INSERT INTO EMPLOYEE(empId,first_name,middle_name,last_name,dept) VALUES (3, 'Ava', "C", "Ambani",'Sales');
+INSERT INTO EMPLOYEE(empId,first_name,middle_name,last_name,dept) VALUES (4, NULL, "C", "Ambani",'Sales');
+INSERT INTO EMPLOYEE(empId,first_name,middle_name,last_name,dept) VALUES (5, 'Ava', NULL, "Ambani",'Sales');
+INSERT INTO EMPLOYEE(empId,first_name,middle_name,last_name,dept) VALUES (6, 'Ava', "C", NULL,'Sales');
+
+
+
+-- fetch 
+SELECT coalesce(first_name,"first name not given") FROM EMPLOYEE;
+GO
+```
+
+- Output
+
+```
+Output:
+
+                    
+--------------------
+Clark               
+Dave                
+Ava                 
+first name not given
+Ava                 
+Ava
+```
+
+- Lets say you wanna name, if first name is null, then consider middle name, if middle name is null then consider last name, in such scenario you can pass multiple columns as argument in `COALESCE` function
+- Consider below query 
+
+```
+
+-- create
+CREATE TABLE EMPLOYEE (
+  empId int,
+  first_name varchar(15),
+  middle_name varchar(15),
+  last_name varchar(15),
+  dept varchar(10),
+);
+
+-- insert
+INSERT INTO EMPLOYEE(empId,first_name,middle_name,last_name,dept) VALUES (1, 'Clark', "A", "Mark",'Sales');
+INSERT INTO EMPLOYEE(empId,first_name,middle_name,last_name,dept) VALUES (2, 'Dave', "B", "Ford",'Accounting');
+INSERT INTO EMPLOYEE(empId,first_name,middle_name,last_name,dept) VALUES (3, 'Ava', "C", "Ambani",'Sales');
+INSERT INTO EMPLOYEE(empId,first_name,middle_name,last_name,dept) VALUES (4, NULL, "C", "Ambani",'Sales');
+INSERT INTO EMPLOYEE(empId,first_name,middle_name,last_name,dept) VALUES (5, NULL, NULL, "Ambani",'Sales');
+INSERT INTO EMPLOYEE(empId,first_name,middle_name,last_name,dept) VALUES (6, NULL, NULL, NULL,'Sales');
+
+
+
+-- fetch 
+SELECT coalesce(first_name,middle_name,last_name,"name not given") FROM EMPLOYEE;
+GO
+```
+
+- Output 
+
+
+```
+Output:
+
+               
+---------------
+Clark          
+Dave           
+Ava            
+C              
+Ambani         
+name not given 
+```
+
+#### CASE statement
+
+- The `CASE` statement provides more flexibility by allowing complex conditions. It's generally slower than `ISNULL` and `COALESCE` because of the conditional logic.
+
+```
+
+-- create
+CREATE TABLE EMPLOYEE (
+  empId int,
+  first_name varchar(15),
+  middle_name varchar(15),
+  last_name varchar(15),
+  dept varchar(10),
+);
+
+-- insert
+INSERT INTO EMPLOYEE(empId,first_name,middle_name,last_name,dept) VALUES (1, 'Clark', "A", "Mark",'Sales');
+INSERT INTO EMPLOYEE(empId,first_name,middle_name,last_name,dept) VALUES (2, 'Dave', "B", "Ford",'Accounting');
+INSERT INTO EMPLOYEE(empId,first_name,middle_name,last_name,dept) VALUES (3, 'Ava', "C", "Ambani",'Sales');
+INSERT INTO EMPLOYEE(empId,first_name,middle_name,last_name,dept) VALUES (4, NULL, "C", "Ambani",'Sales');
+INSERT INTO EMPLOYEE(empId,first_name,middle_name,last_name,dept) VALUES (5, NULL, NULL, "Ambani",'Sales');
+INSERT INTO EMPLOYEE(empId,first_name,middle_name,last_name,dept) VALUES (6, NULL, NULL, NULL,'Sales');
+
+
+
+-- fetch 
+SELECT case
+
+  When first_name is null then "first name not given"
+  else
+    first_name
+End as result
+FROM EMPLOYEE;
+GO
+```
+
+- Output
+
+```
+Output:
+
+result              
+--------------------
+Clark               
+Dave                
+Ava                 
+first name not given
+first name not given
+first name not given
+```
+
+### UNION and UNION ALL 
+
+- The `UNION` and `UNION ALL` operators are used to combine the results of two or more SELECT statements in SQL Server.
+- `UNION`:
+  - Removes duplicate rows from the result set.
+  - Performs a sorting operation to ensure unique rows, which can make it slower for large datasets.
+- `UNION ALL`:
+  - Does not remove duplicates, so it is faster because it skips the sorting step.
+  - Includes all rows from the combined result sets, including duplicates.
+
+
+```
+-- Create two tables
+CREATE TABLE TableA (
+    ID INT,
+    Name VARCHAR(50)
+);
+
+CREATE TABLE TableB (
+    ID INT,
+    Name VARCHAR(50)
+);
+
+-- Insert values into TableA
+INSERT INTO TableA (ID, Name) VALUES
+(1, 'Alice'),
+(2, 'Bob'),
+(3, 'Charlie');
+
+-- Insert values into TableB
+INSERT INTO TableB (ID, Name) VALUES
+(2, 'Bob'),
+(3, 'Charlie'),
+(4, 'David');
+
+/*
+  union
+*/
+
+SELECT ID, Name FROM TableA
+UNION
+SELECT ID, Name FROM TableB;
+
+/*
+  union all
+*/
+SELECT ID, Name FROM TableA
+UNION ALL
+SELECT ID, Name FROM TableB;
+```
+
+- Output
+
+```
+Output:
+
+ID          Name                                              
+----------- --------------------------------------------------
+          1 Alice                                             
+          2 Bob                                               
+          3 Charlie                                           
+          4 David                                             
+ID          Name                                              
+----------- --------------------------------------------------
+          1 Alice                                             
+          2 Bob                                               
+          3 Charlie                                           
+          2 Bob                                               
+          3 Charlie                                           
+          4 David  
+```
+
+## Stored Procedure
+
+- In SQL Server, a Stored Procedure is a collection of SQL statements and control-of-flow logic, stored in the database and executed as a single batch. Stored procedures can accept input parameters, output parameters, and even return values, making them flexible and powerful tools for encapsulating database operations.
+
+
