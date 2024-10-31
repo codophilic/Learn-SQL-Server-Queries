@@ -1525,5 +1525,107 @@ ID          Name
 ## Stored Procedure
 
 - In SQL Server, a Stored Procedure is a collection of SQL statements and control-of-flow logic, stored in the database and executed as a single batch. Stored procedures can accept input parameters, output parameters, and even return values, making them flexible and powerful tools for encapsulating database operations.
+- Lets create a table and insert some values into it
+
+```
+create table test(
+id int ,
+name varchar(15),
+dept varchar(15));
+
+insert into test(id,name,dept) values (1,'A','IT'), (2,'B','IT');
+```
+
+- Lets create and execute a simple procedure
+
+```
+/* Creating Procedure */
+CREATE PROCEDURE testProc
+AS
+BEGIN
+    SELECT * FROM test;
+END;
+
+/* Execute Procedure */
+execute testProc;
+```
+
+- Output
+
+```
+id	name	dept
+1	A	IT
+2	B	IT
+```
+
+- Alter procedure
+
+```
+Alter PROCEDURE testProc
+AS
+BEGIN
+    SELECT name FROM test;
+END;
+
+execute testProc;
+```
+
+- Procedure taking inputs
+
+```
+Alter PROCEDURE testProc 
+
+@Name varchar(16),
+@ID int
+
+AS
+BEGIN
+    SELECT name FROM test where name=@Name and id=@ID;
+END;
+
+exec testProc @Name='A' , @ID=1;
+```
+
+- Output
+
+```
+name
+A
+```
+
+- Procedure providing Output
+
+```
+Alter PROCEDURE testProc 
+
+@Name varchar(16) , -- default inputs or you can Specify IN
+@ID int,
+@DeptName varchar(16) OUT
+
+AS
+BEGIN
+    SELECT @DeptName=dept FROM test where name=@Name and id=@ID;
+END;
+
+declare @DepartName varchar(16);
+exec testProc @Name='A' , @ID=1, @DeptName=@DepartName OUTPUT;
+
+PRINT @DepartName;
+```
+
+- Output
+
+```
+IT
+```
+
+
+
+
+
+
+
+
+
 
 
