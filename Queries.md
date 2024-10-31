@@ -1619,6 +1619,174 @@ PRINT @DepartName;
 IT
 ```
 
+- Procedure returning values
+
+```
+Alter PROCEDURE testProc 
+
+@Name varchar(16) , -- default inputs or you can Specify IN
+@ID int,
+@DeptName varchar(16) OUT
+
+AS
+BEGIN
+    SELECT @DeptName=dept FROM test where name=@Name and id=@ID;
+	if @DeptName is null or len(@DeptName)=0
+		return 1
+	else
+		return 0
+END;
+
+declare 
+@DepartName varchar(16), @ProcedureResponse varchar(16);
+exec @ProcedureResponse=testProc @Name='A' , @ID=1, @DeptName=@DepartName OUTPUT;
+
+PRINT @DepartName+' ' +@ProcedureResponse;
+```
+
+- Output
+
+```
+IT 0
+```
+
+>[!NOTE]
+> - The `RETURN` statement in a SP can only return integer values (typically used to indicate a status code, such as 0 for success and non-zero for errors).
+> - If you want to return a string, a boolean, or any other data type, you'll need to use output parameters or SELECT statements instead.
+
+- Error Handling in SP
+
+```
+Alter PROCEDURE testProc 
+
+@Name varchar(16) , -- default inputs or you can Specify IN
+@ID int,
+@DeptName varchar(16) OUT
+
+AS
+BEGIN
+	BEGIN TRY
+		SELECT @DeptName=dept FROM test where name=@Name and id=@ID;
+		
+		if @DeptName is null or len(@DeptName)=0
+			return 1
+		else
+			return 0
+	END TRY
+	BEGIN CATCH
+		PRINT 'ERROR OCCURED '+ERROR_MESSAGE()+' ' +ERROR_NUMBER()+' ' + ERROR_SEVERITY() +' ' + ERROR_STATE() +' '+ ERROR_PROCEDURE()+' '+ ERROR_LINE() +' ' + ERROR_MESSAGE();
+	END CATCH;
+
+END;
+```
+
+- Dynamic SQL generation
+
+```
+Alter PROCEDURE testProc 
+
+@Name varchar(16) , -- default inputs or you can Specify IN
+@ID int,
+@DeptName varchar(16) OUT
+
+AS
+BEGIN
+	BEGIN TRY
+		DECLARE @SQLQUERY NVARCHAR(50)
+		SET @SQLQUERY=N'SELECT * FROM test where name= @NameArgs and id= @IDArgs';
+		EXEC sp_executesql
+		@SQLQUERY,
+		N'@NameArgs varchar(20), @IDArgs INT',
+		@NameArgs=@Name,
+		@IDArgs=@ID;
+		if @DeptName is null or len(@DeptName)=0
+			return 1
+		else
+			return 0
+	END TRY
+	BEGIN CATCH
+		PRINT 'ERROR OCCURED '+ERROR_MESSAGE()+' ' +ERROR_NUMBER()+' ' + ERROR_SEVERITY() +' ' + ERROR_STATE() +' '+ ERROR_PROCEDURE()+' '+ ERROR_LINE() +' ' + ERROR_MESSAGE();
+	END CATCH;
+
+END;
+```
+
+- Initiating Transaction
+
+```
+Alter PROCEDURE testProc 
+
+@Name varchar(16) , -- default inputs or you can Specify IN
+@ID int,
+@NewName varchar(16)
+
+AS
+BEGIN
+	BEGIN TRANSACTION;
+	BEGIN TRY
+		UPDATE Test
+		Set name=@NewName
+		where name=@Name and id=@ID;
+		select * from test where name=@NewName and id=@ID;
+		COMMIT TRANSACTION;
+
+	END TRY
+	BEGIN CATCH
+	ROLLBACK TRANSACTION;
+		PRINT 'ERROR OCCURED '+ERROR_MESSAGE()+' ' +ERROR_NUMBER()+' ' + ERROR_SEVERITY() +' ' + ERROR_STATE() +' '+ ERROR_PROCEDURE()+' '+ ERROR_LINE() +' ' + ERROR_MESSAGE();
+	END CATCH;
+
+END;
+
+ 
+exec testProc @Name='A' , @ID=1,@NewName='AA';
+```
+
+- Output
+
+```
+id	name	dept
+1	AA	IT
+```
+
+- Encrypt your SP from being viewed or modified
+
+```
+Alter PROCEDURE testProc  
+
+@Name varchar(16) , -- default inputs or you can Specify IN
+@ID int,
+@NewName varchar(16)
+WITH ENCRYPTION
+AS
+BEGIN
+	BEGIN TRANSACTION;
+	BEGIN TRY
+		UPDATE Test
+		Set name=@NewName
+		where name=@Name and id=@ID;
+		select * from test where name=@NewName and id=@ID;
+		COMMIT TRANSACTION;
+
+	END TRY
+	BEGIN CATCH
+	ROLLBACK TRANSACTION;
+		PRINT 'ERROR OCCURED '+ERROR_MESSAGE()+' ' +ERROR_NUMBER()+' ' + ERROR_SEVERITY() +' ' + ERROR_STATE() +' '+ ERROR_PROCEDURE()+' '+ ERROR_LINE() +' ' + ERROR_MESSAGE();
+	END CATCH;
+
+END;
+```
+
+- Drop procedure
+
+```
+drop proc testProc
+```
+
+
+
+
+
 
 
 
