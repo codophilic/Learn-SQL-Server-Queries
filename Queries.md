@@ -1052,7 +1052,7 @@ deptId      deptName
         103 IT  
 ```
 
-#### INNER JOIN
+#### INNER JOIN or JOIN
 
 - An INNER JOIN returns rows when there is a match in both tables. If no match is found, the row is excluded.
 
@@ -1060,6 +1060,12 @@ deptId      deptName
 SELECT e.empId, e.name, d.deptName
 FROM Employee e
 INNER JOIN Department d ON e.deptId = d.deptId;
+
+OR
+
+SELECT e.empId, e.name, d.deptName
+FROM Employee e
+JOIN Department d ON e.deptId = d.deptId;
 ```
 
 - Output
@@ -1081,6 +1087,12 @@ empId       name            deptName
 SELECT e.empId, e.name, d.deptName
 FROM Employee e
 LEFT JOIN Department d ON e.deptId = d.deptId;
+
+OR
+
+SELECT e.empId, e.name, d.deptName
+FROM Employee e
+LEFT OUTER JOIN Department d ON e.deptId = d.deptId;
 ```
 
 - Output
@@ -1096,6 +1108,26 @@ empId       name            deptName
           4 Eve             NULL  
 ```
 
+- Lets say you wanna find out the names of the employee which does not have department name
+
+```
+SELECT e.empId, e.name, d.deptName
+FROM Employee e
+LEFT OUTER JOIN Department d ON e.deptId = d.deptId where d.deptId is null;
+```
+
+- Output
+
+```
+Output:
+
+empId       name            deptName       
+----------- --------------- ---------------
+          3 Bob             NULL    
+          4 Eve             NULL           
+```
+
+
 #### RIGHT JOIN or RIGHT OUTER JOIN
 
 - A RIGHT JOIN (or RIGHT OUTER JOIN) returns all rows from the right table and the matched rows from the left table. If there is no match, `NULL` values are returned for columns from the left table.
@@ -1104,6 +1136,12 @@ empId       name            deptName
 SELECT e.empId, e.name, d.deptName
 FROM Employee e
 RIGHT JOIN Department d ON e.deptId = d.deptId;
+
+OR
+
+SELECT e.empId, e.name, d.deptName
+FROM Employee e
+RIGHT OUTER JOIN Department d ON e.deptId = d.deptId;
 ```
 
 - Output
@@ -1118,6 +1156,24 @@ empId       name            deptName
        NULL NULL            IT             
 ```
 
+- Lets say we only want to retrieve the department name which is not mapped to employee
+
+```
+SELECT e.empId, e.name, d.deptName
+FROM Employee e
+RIGHT JOIN Department d ON e.deptId = d.deptId where e.deptId is null;
+```
+
+- Output
+
+```
+Output:
+
+empId       name            deptName       
+----------- --------------- ---------------
+       NULL NULL            IT 
+```
+
 #### FULL JOIN or FULL OUTER JOIN
 
 - A FULL JOIN (or FULL OUTER JOIN) returns all rows when there is a match in either the left or right table. Rows that do not have matches in either table will contain `NULL` values for the missing data.
@@ -1126,6 +1182,12 @@ empId       name            deptName
 SELECT e.empId, e.name, d.deptName
 FROM Employee e
 FULL JOIN Department d ON e.deptId = d.deptId;
+
+OR
+
+SELECT e.empId, e.name, d.deptName
+FROM Employee e
+FULL OUTER JOIN Department d ON e.deptId = d.deptId;
 ```
 
 - Output
@@ -1141,6 +1203,32 @@ empId       name            deptName
           4 Eve             NULL           
        NULL NULL            IT  
 ```
+
+- Now lets say we want the employee who does not have department mapped and name of department as well which are not mapped to employees
+
+```
+
+SELECT e.empId, e.name, d.deptName
+FROM Employee e
+FULL OUTER JOIN Department d ON e.deptId = d.deptId where e.deptId is null OR d.deptId is null;
+```
+
+- Output
+
+```
+Output:
+
+empId       name            deptName       
+----------- --------------- ---------------
+          3 Bob             NULL           
+          4 Eve             NULL           
+       NULL NULL            IT 
+```
+
+
+#### Summary (RIGHT, LEFT, INNER and FULL Join)
+
+![alt text](image-5.png)
 
 #### CROSS JOIN
 
@@ -1476,6 +1564,7 @@ CREATE TABLE TableB (
 -- Insert values into TableA
 INSERT INTO TableA (ID, Name) VALUES
 (1, 'Alice'),
+(1, 'AA'),
 (2, 'Bob'),
 (3, 'Charlie');
 
@@ -1508,6 +1597,7 @@ Output:
 
 ID          Name                                              
 ----------- --------------------------------------------------
+          1 AA                                                
           1 Alice                                             
           2 Bob                                               
           3 Charlie                                           
@@ -1515,11 +1605,12 @@ ID          Name
 ID          Name                                              
 ----------- --------------------------------------------------
           1 Alice                                             
+          1 AA                                                
           2 Bob                                               
           3 Charlie                                           
           2 Bob                                               
           3 Charlie                                           
-          4 David  
+          4 David       
 ```
 
 ## Stored Procedure
