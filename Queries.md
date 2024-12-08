@@ -2713,3 +2713,368 @@ SELECT EmployeeID, Name, Salary FROM HighSalaryEmployees;
 - CTEs: They exist only for the duration of the query and are well-suited for recursion and subquery simplification.
 - Temporary Tables: These persist until the session ends or are explicitly dropped, which may cause temporary storage overhead.
 - Views: Persistent and saved in the database, views don’t support recursive queries directly and are best for reusable static query patterns.
+
+## Windows Function
+
+- In SQL, a window function, also known as an analytic function, is a function that calculates values across a group of rows and returns a result for each row. This is different from an aggregate function, which returns a single result for a group of rows.
+- A window function in SQL is a type of function that allows us to perform calculations across a specific set of rows related to the current row. These calculations happen within a defined window of data, and they are particularly useful for aggregates, rankings, and cumulative totals without altering the dataset.
+- Lets understand with example, consider below image where you need to apply aggregate function on whole table, to find out count, average and sum, you will use `GROUP BY` clause for it.
+
+![alt text](image-2.png)
+
+- Now the corresponding output is an aggregate output, but lets say you wanna display this aggregate output with non-aggregate value something like below
+
+![alt text](image-3.png)
+
+- In such case if you use aggregate function, you will get an error. To achieve this you can use subquery or `OVER` clause
+
+![alt text](image-4.png)
+
+- The OVER clause is key to defining this window. It partitions the data into different sets (using the `PARTITION BY` clause)(optional) and orders them (using the `ORDER BY` clause)(optional)
+- Without the `OVER` clause, functions like SUM, RANK, or ROW_NUMBER act as regular aggregate functions that collapse data (e.g., a total sum for the entire dataset).
+- When used with the `OVER` clause, an aggregate function in SQL essentially behaves like a window function, allowing you to calculate aggregated values for each row within a specified "window" of data or set of rows, rather than just collapsing the results into a single value per group; this window can be defined by partitioning (optional) and ordering the data(optional) using clauses within the OVER clause itself
+- Consider below student table
+
+```
+CREATE TABLE students (
+    student_id INT,
+    student_name VARCHAR(50),
+    subject VARCHAR(50),
+    score INT
+);
+
+
+INSERT INTO students (student_id, student_name, subject, score) VALUES
+(1, 'Alice', 'Math', 90),
+(2, 'Bob', 'Math', 85),
+(3, 'Charlie', 'Math', 90),
+(4, 'Alice', 'Science', 80),
+(5, 'Bob', 'Science', 70),
+(6, 'Charlie', 'Science', 80);
+
+select * from students;
+```
+
+- Output
+
+```
+Output:
+
+student_id  student_name                                       subject                                            score      
+----------- -------------------------------------------------- -------------------------------------------------- -----------
+          1 Alice                                              Math                                                        90
+          2 Bob                                                Math                                                        85
+          3 Charlie                                            Math                                                        90
+          4 Alice                                              Science                                                     80
+          5 Bob                                                Science                                                     70
+          6 Charlie                                            Science                                                     80
+```
+
+- Now lets apply simple `OVER` clause with `SUM`
+
+```
+SELECT 
+    student_name,
+    subject,
+    score,
+    sum(score) OVER() as sum_values
+FROM students;
+```
+
+- Output
+
+```
+Output:
+
+student_name                                       subject                                            score       sum_values 
+-------------------------------------------------- -------------------------------------------------- ----------- -----------
+Alice                                              Math                                                        90         495
+Bob                                                Math                                                        85         495
+Charlie                                            Math                                                        90         495
+Alice                                              Science                                                     80         495
+Bob                                                Science                                                     70         495
+Charlie                                            Science                                                     80         495
+```
+
+- So here our set of row is entire table, or window consider is entire table, the window (or set of rows) for the `SUM()` function is the entire table because
+  - No PARTITION BY clause is specified, so no grouping happens.
+  - No ORDER BY clause is specified, so the rows are not sequentially considered.
+- Lets say now we need to sum score done by math and score done by science or basically find score of each subject
+
+```
+SELECT 
+    student_name,
+    subject,
+    score,
+    sum(score) OVER( PARTITION BY subject) as sum_values
+FROM students;
+```
+
+- Output
+
+```
+Output:
+
+student_name                                       subject                                            score       sum_values 
+-------------------------------------------------- -------------------------------------------------- ----------- -----------
+Alice                                              Math                                                        90         265
+Bob                                                Math                                                        85         265
+Charlie                                            Math                                                        90         265
+Alice                                              Science                                                     80         230
+Bob                                                Science                                                     70         230
+Charlie                                            Science                                                     80         230
+```
+
+- So here all student score in Math subject is 265 (90+85+90) whereas all student score in Science is 230 (80+70+80).
+- Now lets apply `ORDER BY` clause with `OVER` on student name
+
+```
+SELECT 
+    student_name,
+    subject,
+    score,
+    sum(score) OVER( order by student_name) as sum_values
+FROM students;
+```
+
+- Output
+
+```
+Output:
+
+student_name                                       subject                                            score       sum_values 
+-------------------------------------------------- -------------------------------------------------- ----------- -----------
+Alice                                              Math                                                        90         170
+Alice                                              Science                                                     80         170
+Bob                                                Science                                                     70         325
+Bob                                                Math                                                        85         325
+Charlie                                            Math                                                        90         495
+Charlie                                            Science                                                     80         495
+```
+
+- The output seems cumulative computation? why so? the rows are ordered alphabetically by `student_name` in the result set before SUM(score) is applied. As the rows are processed in the specified order, `SUM(score)` adds up the score values row by row. The `SUM(score)` function now computes a cumulative total (running sum) in the order specified by `student_name`.
+- The table is logically processed in this order:
+
+| Row Number | student_name | subject | score | Cumulative Sum (SUM(score)) |
+|------------|--------------|---------|-------|-----------------------------|
+| 1          | Alice        | Math    | 90    | 90                          |
+| 2          | Alice        | Science | 80    | 90 + 80 = 170               |
+| 3          | Bob          | Science | 70    | 170 + 70 = 240              |
+| 4          | Bob          | Math    | 85    | 240 + 85 = 325              |
+| 5          | Charlie      | Math    | 90    | 325 + 90 = 415              |
+| 6          | Charlie      | Science | 80    | 415 + 80 = 495              |
+
+- The same logic gets applied when we partition the data
+
+```
+SELECT 
+    student_name,
+    subject,
+    score,
+    sum(score) OVER( partition by subject order by student_name) as sum_values
+FROM students;
+```
+
+- Output
+
+```
+Output:
+
+student_name                                       subject                                            score       sum_values 
+-------------------------------------------------- -------------------------------------------------- ----------- -----------
+Alice                                              Math                                                        90          90
+Bob                                                Math                                                        85         175
+Charlie                                            Math                                                        90         265
+Alice                                              Science                                                     80          80
+Bob                                                Science                                                     70         150
+Charlie                                            Science                                                     80         230
+```
+
+### Types of Windows Function
+
+#### 1. Aggregate Window Function
+
+- These functions allow us to perform aggregate operations across a set of rows within the defined window, while still retaining the detail-level data.
+- Common Aggregate Window Functions include:
+  - SUM()
+  - AVG()
+  - COUNT()
+  - MAX()
+  - MIN()
+
+#### 2. Ranking Window Functions
+
+- These functions provide rankings of rows within a partition based on specific criteria. Common ranking functions include:
+- `RANK()` –  As the name suggests, the rank function assigns rank to all the rows within every partition. Rank is assigned such that rank 1 given to the first row and rows having same value are assigned same rank. For the next rank after two same rank values, one rank value will be skipped. For instance, if two rows share­ rank 1, the next row gets rank 3, not 2.
+
+```
+
+SELECT 
+    student_name,
+    subject,
+    score,
+    RANK() OVER(ORDER BY score) as rank
+FROM students;
+```
+
+- Output
+
+```
+student_name                                       subject                                            score       rank                
+-------------------------------------------------- -------------------------------------------------- ----------- --------------------
+Bob                                                Science                                                     70                    1
+Charlie                                            Science                                                     80                    2
+Alice                                              Science                                                     80                    2
+Bob                                                Math                                                        85                    4
+Charlie                                            Math                                                        90                    5
+Alice                                              Math                                                        90                    5
+```
+
+- For score 80 the rank assigned is 2 but for score 85 the rank assigned is 4, rank 3 got skipped
+- `DENSE_RANK()` – It assigns rank to each row within partition. Just like rank function first row is assigned rank 1 and rows having same value have same rank. The difference between RANK() and DENSE_RANK() is that in DENSE_RANK(), for the next rank after two same rank, consecutive integer is used, no rank is skipped. 
+
+```
+
+SELECT 
+    student_name,
+    subject,
+    score,
+    DENSE_RANK() OVER(ORDER BY score) as denserank
+FROM students;
+```
+
+- Output
+
+```
+Output:
+
+student_name                                       subject                                            score       denserank                
+-------------------------------------------------- -------------------------------------------------- ----------- --------------------
+Bob                                                Science                                                     70                    1
+Charlie                                            Science                                                     80                    2
+Alice                                              Science                                                     80                    2
+Bob                                                Math                                                        85                    3
+Charlie                                            Math                                                        90                    4
+Alice                                              Math                                                        90                    4
+```
+
+- Here 85 score has a rank 3, unlike previous in `RANK()` function the rank 3 got skipped but in `DENSE_RANK()` it got considered.
+- `ROW_NUMBER()` – ROW_NUMBER() gives e­ach row a unique number. It numbers rows from one­ to the total rows. The rows are put into groups base­d on their values. Each group is called a partition. In e­ach partition, rows get numbers one afte­r another. No two rows have the same­ number in a partition.
+
+```
+SELECT 
+    student_name,
+    subject,
+    score,
+    ROW_NUMBER() OVER(partition by subject order by student_name) as rank
+FROM students;
+```
+
+- Output
+
+```
+Output:
+
+student_name                                       subject                                            score       rank                
+-------------------------------------------------- -------------------------------------------------- ----------- --------------------
+Alice                                              Math                                                        90                    1
+Bob                                                Math                                                        85                    2
+Charlie                                            Math                                                        90                    3
+Alice                                              Science                                                     80                    1
+Bob                                                Science                                                     70                    2
+Charlie                                            Science                                                     80                    3
+```
+
+
+
+## Types of SQL Commands
+
+
+![alt text](image-1.png)
+
+1. Data Definition Language (DDL)
+  - DDL changes the structure of the table like creating a table, deleting a table, altering a table, etc.
+  - All the command of DDL are auto-committed that means it permanently save all the changes in the database.
+
+2. Data Manipulation Language
+  - DML commands are used to modify the database data. It is responsible for all form of changes in the database.
+  - The command of DML is not auto-committed that means it can't permanently save all the changes in the database. They can be rollback.
+
+3. Data Control Language
+  - DCL commands are used to grant and take back authority from any database user.
+
+4. Transaction Control Language
+  - Transactions are atomic i.e. either every statement succeeds or none of statement succeeds. There are number of Transaction Control statements available that allow us to control this behavior. These statements ensure data consistency. TCL commands can only use with DML commands like INSERT, DELETE and UPDATE only.
+  - These operations are automatically committed in the database that's why they cannot be used while creating tables or dropping them.
+  - SAVEPOINT: It is used to roll the transaction back to a certain point without rolling back the entire transaction.
+
+## ACID Properties
+
+1. Atomicity:
+  - A transaction is all or nothing. Either everything in the transaction happens, or nothing happens.
+  - If something goes wrong during the transaction, the database rolls back to its original state.
+  - No partial transactions are allowed.
+
+2. Consistency:
+  - This means that integrity constraints must be maintained so that the database is consistent before and after the transaction. It refers to the correctness of a database. Example, when we perform certain amount transaction, the total amount in account before and after the transaction must be maintained.
+
+3. Isolation:
+  - This property ensures that multiple transactions can occur concurrently without leading to the inconsistency of the database state. Transactions occur independently without interference. Changes occurring in a particular transaction will not be visible to any other transaction until that particular change in that transaction is written to memory or has been committed. 
+  - Transactions must take place in isolation and changes should be visible only after they have been made to the main memory.
+
+4. Durability:
+- This property ensures that once the transaction has completed execution, the updates and modifications to the database are stored in and written to disk and they persist even if a system failure occurs. These updates now become permanent and are stored in non-volatile memory. The effects of the transaction, thus, are never lost.
+
+## Commonly asked SQL Question
+
+### What is the difference between `DELETE` and `TRUNCATE`?
+  - `DELETE`:
+    - Removes rows from a table based on a `WHERE` condition if specified.
+    - It is a DML (Data Manipulation Language) command.
+    - It can be rolled back if used within a transaction.
+    - Slower as it logs each deleted row.
+  - `TRUNCATE`:
+    - Removes all rows from a table, resetting the table to an empty state.
+    - It is a DDL (Data Definition Language) command.
+    - Cannot be rolled back.
+    - Faster as it does not log individual row deletions.
+
+### What is a primary key?
+  - A primary key is a column (or a combination of columns) in a table that uniquely identifies each row in the table.
+  - Must contain unique values.
+  - Cannot contain NULL values.
+  - Each table can have only one primary key.
+
+
+### What is the difference between INNER JOIN and OUTER JOIN?
+  - INNER JOIN: Returns rows where there is a match in both tables.
+  - OUTER JOIN: 3 types of OUTER JOIN
+    - LEFT OUTER JOIN: Returns all rows from the left table, and the matched rows from the right table; if there is no match, NULL values are returned for the right table.
+    - RIGHT OUTER JOIN: Returns all rows from the right table, and the matched rows from the left table; if there is no match, NULL values are returned for the left table.
+    - FULL OUTER JOIN: Returns all rows when there is a match in either table, and NULL for non-matching rows.
+
+### What is the difference between `WHERE` and `HAVING`?
+- `WHERE`:
+    - Used to filter rows before grouping.
+    - Cannot be used with aggregate functions.
+- `HAVING`:
+    - Used to filter groups after aggregation.
+    - Can be used with aggregate functions (e.g., SUM, COUNT).
+
+
+### Write a query to fetch the nth highest salary.
+
+```
+SELECT DISTINCT salary
+FROM employees
+ORDER BY salary DESC
+LIMIT 1 OFFSET n-1;
+```
+- Replace n with the desired rank (e.g., n=3 for the 3rd highest salary).
+
+
+
+
+
+
+
