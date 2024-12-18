@@ -508,7 +508,7 @@ empId       name            dept       Salary               gender
           1 ABC             IT                    1000.0000           1
 ```
 
-- When we insert data into `employee` table, we don't need to pass value for `empid` column, it gets automatically generated.
+- When we insert data into `employee` table, we don't need to pass value for `empid` column, it gets automatically generated. `IDENTITY(1,1)` means starting from the value 1 (first insert will have ID as 1) and incrementing by 1 with each new row insertion.
 - If you try to enter the value explicitly , you will get an error
 
 ```
@@ -1544,6 +1544,7 @@ first name not given
 - `UNION`:
   - Removes duplicate rows from the result set.
   - Performs a sorting operation to ensure unique rows, which can make it slower for large datasets.
+  - To identify duplicates, the database system internally sorts the combined result set, which is essentially a sort based on the primary key (if present).
 - `UNION ALL`:
   - Does not remove duplicates, so it is faster because it skips the sorting step.
   - Includes all rows from the combined result sets, including duplicates.
